@@ -170,6 +170,7 @@ export async function fetchFullWeather(lat, lon, cityName = null, countryCode = 
       hourly: [
         'temperature_2m',
         'relative_humidity_2m',
+        'apparent_temperature',
         'precipitation_probability',
         'weather_code',
         'wind_speed_10m',
@@ -222,12 +223,13 @@ export async function fetchFullWeather(lat, lon, cityName = null, countryCode = 
     const foundIdx = hourly.time.findIndex((t) => t.startsWith(currentHourISO));
     if (foundIdx !== -1) startIndex = foundIdx;
 
-    for (let i = startIndex; i < Math.min(startIndex + 24, hourly.time.length); i++) {
+    for (let i = startIndex; i < Math.min(startIndex + 36, hourly.time.length); i++) {
       const code = hourly.weather_code[i];
       const hMeta = interpretWeatherCode(code);
       formattedHourly.push({
         time: hourly.time[i],
         temperature: Math.round(hourly.temperature_2m[i]),
+        feels_like: hourly.apparent_temperature ? Math.round(hourly.apparent_temperature[i]) : Math.round(hourly.temperature_2m[i]),
         humidity: hourly.relative_humidity_2m[i],
         precipitation_prob: hourly.precipitation_probability ? hourly.precipitation_probability[i] : 0,
         wind_speed: hourly.wind_speed_10m[i],

@@ -6,6 +6,8 @@ import FavoritesBar from './components/FavoritesBar';
 import WeatherHero from './components/WeatherHero';
 import SmartAdvice from './components/SmartAdvice';
 import HourlyForecast from './components/HourlyForecast';
+import BestTimeToday from './components/BestTimeToday';
+import SmartCommute from './components/SmartCommute';
 import DailyForecast from './components/DailyForecast';
 import LiveRadar from './components/LiveRadar';
 import ActivityPlanner from './components/ActivityPlanner';
@@ -83,6 +85,12 @@ function MainDashboard() {
 
             {/* 24-Hour Commuter Forecast (Feature 2) */}
             <HourlyForecast />
+
+            {/* Optimal Outdoor Activity Window (Feature 1: Best Time Today) */}
+            <BestTimeToday />
+
+            {/* Transit Intelligence & Departure Optimization (Feature 2 & 4: Smart Commute) */}
+            <SmartCommute />
 
             {/* 7-to-15-Day Extended Outlook (Feature 3) */}
             <DailyForecast />

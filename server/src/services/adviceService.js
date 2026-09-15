@@ -27,18 +27,29 @@ export function generateWeatherAdvice(weather) {
       type: 'warning',
       icon: 'Umbrella',
       title: 'Carry an Umbrella',
-      message: `Active precipitation detected (${condition_text}). Roads may be slippery; carry a sturdy umbrella or raincoat before stepping outside.`,
+      message: `Active precipitation detected (${condition_text}). Roads may be slick; carry a sturdy umbrella or raincoat before stepping outside.`,
       urgency: 'high',
     });
-  } else if (weather.hourly && weather.hourly.slice(0, 8).some((h) => h.precipitation_prob > 35)) {
-    const rainyHour = weather.hourly.slice(0, 8).find((h) => h.precipitation_prob > 35);
+  } else if (weather.hourly && weather.hourly.slice(0, 4).some((h) => h.precipitation_prob >= 40)) {
+    const rainyHour = weather.hourly.slice(0, 4).find((h) => h.precipitation_prob >= 40);
     const hourLabel = rainyHour?.time ? new Date(rainyHour.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'soon';
     notifications.push({
       id: 'rain-soon',
+      type: 'warning',
+      icon: 'Umbrella',
+      title: 'Rain Expected Shortly',
+      message: `Rain probability spikes to ${rainyHour?.precipitation_prob}% around ${hourLabel}. Keep an umbrella ready before leaving.`,
+      urgency: 'high',
+    });
+  } else if (weather.hourly && weather.hourly.slice(0, 8).some((h) => h.precipitation_prob >= 25)) {
+    const rainyHour = weather.hourly.slice(0, 8).find((h) => h.precipitation_prob >= 25);
+    const hourLabel = rainyHour?.time ? new Date(rainyHour.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'later today';
+    notifications.push({
+      id: 'rain-later',
       type: 'info',
       icon: 'Umbrella',
-      title: 'Rain Expected Later',
-      message: `Rain probability peaks at ${rainyHour?.precipitation_prob}% around ${hourLabel}. Better keep a compact umbrella in your bag!`,
+      title: 'Scattered Rain Possible',
+      message: `Rain probability peaks at ${rainyHour?.precipitation_prob}% around ${hourLabel}. Having a compact umbrella in your bag is recommended.`,
       urgency: 'medium',
     });
   } else {
@@ -73,33 +84,45 @@ export function generateWeatherAdvice(weather) {
     });
   }
 
-  // 3. Clothing & Gear Advisory
-  if (temperature <= 8) {
+  // 3. Context-Aware Clothing & Thermal Comfort (evaluates feels_like + humidity + wind)
+  const roundTemp = Math.round(temperature);
+  const roundFeels = Math.round(feels_like);
+
+  if (roundFeels >= 33 || (roundTemp >= 26 && humidity >= 70 && roundFeels >= 30)) {
     notifications.push({
-      id: 'clothing-heavy',
+      id: 'clothing-humid-heat',
       type: 'warning',
-      icon: 'ThermometerSnowflake',
-      title: 'Wear Thick Winter Clothes',
-      message: `Brisk chill at ${Math.round(temperature)}°C (feels like ${Math.round(feels_like)}°C). Wear a heavy jacket, thermal layers, and a woolen cap.`,
-      urgency: 'high',
-    });
-  } else if (temperature <= 17) {
-    notifications.push({
-      id: 'clothing-jacket',
-      type: 'info',
-      icon: 'Shirt',
-      title: 'Wear a Light Jacket or Sweater',
-      message: `Pleasant but cool at ${Math.round(temperature)}°C. A light jacket, hoodie, or knit sweater is recommended for comfort.`,
+      icon: 'Flame',
+      title: 'Feels Hot & Humid',
+      message: `Although it's ${roundTemp}°C, high humidity (${humidity}%) makes it feel closer to ${roundFeels}°C. Light, breathable clothing is recommended.`,
       urgency: 'medium',
     });
-  } else if (temperature >= 35) {
+  } else if (roundTemp >= 35 || roundFeels >= 38) {
     notifications.push({
       id: 'clothing-hot',
       type: 'warning',
       icon: 'Flame',
       title: 'Wear Breathable Cotton',
-      message: `Intense heat at ${Math.round(temperature)}°C! Wear loose, light-colored cotton clothing, stay hydrated with electrolytes, and avoid prolonged sun exposure.`,
+      message: `Intense heat at ${roundTemp}°C (feels like ${roundFeels}°C)! Wear loose, light-colored cotton clothing, stay hydrated, and limit direct sun exposure.`,
       urgency: 'high',
+    });
+  } else if (roundFeels <= 8 || roundTemp <= 8) {
+    notifications.push({
+      id: 'clothing-heavy',
+      type: 'warning',
+      icon: 'ThermometerSnowflake',
+      title: 'Wear Thick Winter Clothes',
+      message: `Brisk chill at ${roundTemp}°C (feels like ${roundFeels}°C). Wear a heavy jacket, thermal layers, and warm headwear.`,
+      urgency: 'high',
+    });
+  } else if (roundFeels <= 16 || roundTemp <= 16) {
+    notifications.push({
+      id: 'clothing-jacket',
+      type: 'info',
+      icon: 'Shirt',
+      title: 'Wear a Light Jacket or Sweater',
+      message: `Cool ambient conditions at ${roundTemp}°C (feels like ${roundFeels}°C). A light jacket, hoodie, or knit sweater is recommended for comfort.`,
+      urgency: 'medium',
     });
   } else {
     notifications.push({
@@ -107,31 +130,40 @@ export function generateWeatherAdvice(weather) {
       type: 'positive',
       icon: 'Smile',
       title: 'Comfortable Daily Attire',
-      message: `Temperature is mild at ${Math.round(temperature)}°C. Regular casual or formal wear is completely suitable.`,
+      message: `Comfortable and mild at ${roundTemp}°C (feels like ${roundFeels}°C with ${humidity}% humidity). Regular casual or work attire is well suited.`,
       urgency: 'low',
     });
   }
 
-  // 4. Wind Alert
+  // 4. Wind & Chill Alert
   if (wind_speed >= 30) {
     notifications.push({
       id: 'wind-alert',
       type: 'warning',
       icon: 'Wind',
       title: 'Strong Wind Warning',
-      message: `Gusty winds at ${Math.round(wind_speed)} km/h. Secure loose items, take care while cycling or driving on highways.`,
+      message: `Gusty winds at ${Math.round(wind_speed)} km/h. Secure loose outdoor items; extra care needed on highways and bridges.`,
       urgency: 'medium',
+    });
+  } else if (wind_speed >= 20 && roundFeels <= 15) {
+    notifications.push({
+      id: 'wind-chill',
+      type: 'info',
+      icon: 'Wind',
+      title: 'Wind Chill Notice',
+      message: `Breezy conditions (${Math.round(wind_speed)} km/h) make it feel cooler (${roundFeels}°C). A windbreaker will keep you comfortable.`,
+      urgency: 'low',
     });
   }
 
-  // 5. Humidity & Heat Index
-  if (temperature >= 28 && humidity >= 75) {
+  // 5. Humidity & Hydration (if not already highlighted in clothing)
+  if (roundTemp >= 28 && humidity >= 80 && !notifications.some((n) => n.id === 'clothing-humid-heat')) {
     notifications.push({
       id: 'muggy-alert',
       type: 'info',
       icon: 'Droplets',
-      title: 'High Humidity & Muggy Conditions',
-      message: `Relative humidity is high at ${humidity}%, making it feel like ${Math.round(feels_like)}°C. Drink plenty of water throughout the day.`,
+      title: 'High Humidity & Muggy Air',
+      message: `Relative humidity is elevated at ${humidity}%, elevating the heat index to ${roundFeels}°C. Drink plenty of water throughout the day.`,
       urgency: 'medium',
     });
   }
