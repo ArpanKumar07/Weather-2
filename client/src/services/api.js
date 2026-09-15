@@ -1,5 +1,9 @@
-// Dynamic API Base: Uses environment variable in production (Vercel) or localhost in dev
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/+$/, '');
+// Dynamic API Base: Automatically normalizes Vercel environment variable or defaults to localhost
+let rawBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').trim().replace(/\/+$/, '');
+if (!rawBase.endsWith('/api')) {
+  rawBase = `${rawBase}/api`;
+}
+const API_BASE = rawBase;
 
 export async function getCurrentWeather(lat, lon, city = null, country = null) {
   const params = new URLSearchParams({ lat, lon });

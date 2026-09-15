@@ -23,8 +23,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check
-app.get('/api/health', (req, res) => {
+// Health check (supports /api/health, /health, and root /)
+app.get(['/api/health', '/health', '/'], (req, res) => {
   res.status(200).json({
     status: 'online',
     app: 'MAUSAM360 API',
@@ -33,10 +33,14 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Mount Routes matching Lab 3 & Lab 4 API Contract
+// Mount Routes matching Lab 3 & Lab 4 API Contract (with /api and fallback without)
 app.use('/api/auth', authRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/users', userRoutes);
+
+app.use('/auth', authRoutes);
+app.use('/weather', weatherRoutes);
+app.use('/users', userRoutes);
 
 // 404 Handler
 app.use((req, res) => {
