@@ -23,7 +23,7 @@ export default function BestTimeToday() {
   if (!currentWeather || !currentWeather.hourly) return null;
 
   return (
-    <div style={{ marginBottom: '2rem' }}>
+    <div id="best-time-today" style={{ marginBottom: '2.5rem', scrollMarginTop: '80px' }}>
       <div className="card-glass">
         {/* Section Title Header */}
         <div className="section-title-row" style={{ marginBottom: '1.2rem' }}>
