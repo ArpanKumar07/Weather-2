@@ -1246,3 +1246,121 @@ button, input, select {
     transform: scale(1);
   }
 }
+
+/* -------------------------------------------------------------
+   Mobile & Tablet Responsive Styling (< 860px)
+   ------------------------------------------------------------- */
+@media (max-width: 860px) {
+  .navbar {
+    padding: 0.75rem 1rem;
+  }
+
+  .nav-wrapper {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .brand {
+    order: 1;
+  }
+
+  .nav-actions {
+    order: 2;
+    margin-left: auto;
+    gap: 0.4rem;
+  }
+
+  .btn-label-desktop {
+    display: none;
+  }
+
+  .search-container {
+    order: 3;
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+
+  .main-content {
+    padding: 1rem 0.85rem 3rem;
+  }
+
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .card-glass {
+    padding: 1.25rem;
+    border-radius: 16px;
+  }
+
+  .temperature-value {
+    font-size: 3.75rem;
+  }
+
+  .hero-weather-icon {
+    width: 75px;
+    height: 75px;
+  }
+
+  .hero-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .daily-forecast-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .radar-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .radar-controls {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .radar-map-container {
+    height: 320px;
+  }
+
+  .activity-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .footer-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .brand-title {
+    font-size: 1.2rem;
+  }
+
+  .brand-subtitle {
+    display: none;
+  }
+
+  .location-title {
+    font-size: 1.55rem;
+  }
+
+  .temperature-value {
+    font-size: 3.1rem;
+  }
+
+  .daily-forecast-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

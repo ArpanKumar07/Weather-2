@@ -143,8 +143,7 @@ export default function Navbar() {
             title="Auto-detect Live Location"
           >
             <MapPin size={16} color="var(--theme-accent)" />
-            <span style={{ display: 'none', minWidth: '0' }}>Live</span>
-            <span>Live Location</span>
+            <span className="btn-label-desktop">Live Location</span>
           </button>
 
           {/* Unit Toggle */}
@@ -186,7 +185,7 @@ export default function Navbar() {
           ) : (
             <button className="btn-pill btn-pill-primary" onClick={openAuthModal}>
               <User size={16} />
-              <span>Login / Register</span>
+              <span className="btn-label-desktop">Login / Register</span>
             </button>
           )}
         </div>
