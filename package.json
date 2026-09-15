@@ -1,0 +1,16 @@
+{
+  "name": "mausam360",
+  "version": "1.0.0",
+  "description": "MAUSAM360 - Weather Aware Activity Planner for Team INFINITE LOOP (G2-T2)",
+  "private": true,
+  "scripts": {
+    "server": "npm run dev --prefix server",
+    "client": "npm run dev --prefix client",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "test:server": "npm test --prefix server",
+    "install:all": "npm install && npm install --prefix server && npm install --prefix client"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

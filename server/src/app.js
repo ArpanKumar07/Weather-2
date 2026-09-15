@@ -1,0 +1,44 @@
+import express from 'express';
+import cors from 'cors';
+import authRoutes from './routes/authRoutes.js';
+import weatherRoutes from './routes/weatherRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+
+export const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+// Latency & SLA tracking middleware (Proving Story W-04: < 1.5s response time)
+app.use((req, res, next) => {
+  const start = Date.now();
+  const originalSend = res.send;
+  res.send = function (body) {
+    const duration = Date.now() - start;
+    if (!res.headersSent) {
+      res.setHeader('X-Response-Time-Ms', duration);
+    }
+    return originalSend.call(this, body);
+  };
+  next();
+});
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'online',
+    app: 'MAUSAM360 API',
+    team: 'INFINITE LOOP (G2-T2)',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Mount Routes matching Lab 3 & Lab 4 API Contract
+app.use('/api/auth', authRoutes);
+app.use('/api/weather', weatherRoutes);
+app.use('/api/users', userRoutes);
+
+// 404 Handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Endpoint not found.' });
+});
