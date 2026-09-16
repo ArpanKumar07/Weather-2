@@ -62,7 +62,7 @@ export default function SmartCommute() {
   if (!currentWeather || !currentWeather.hourly) return null;
 
   return (
-    <div style={{ marginBottom: '2rem' }}>
+    <div id="smart-commute" style={{ marginBottom: '2.5rem', scrollMarginTop: '80px' }}>
       <div className="card-glass">
         {/* Title Row */}
         <div className="section-title-row" style={{ marginBottom: '1.25rem' }}>
