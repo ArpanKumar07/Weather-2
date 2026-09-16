@@ -73,14 +73,20 @@ export async function getFavorites(token) {
   return res.json();
 }
 
-export async function addFavorite(locationId, token) {
+export async function addFavorite(locationId, token, extraData = {}) {
+  const payload = { location_id: locationId };
+  if (extraData.city_name) payload.city_name = extraData.city_name;
+  if (extraData.country_code) payload.country_code = extraData.country_code;
+  if (extraData.latitude) payload.latitude = extraData.latitude;
+  if (extraData.longitude) payload.longitude = extraData.longitude;
+
   const res = await fetch(`${API_BASE}/users/favorites`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ location_id: locationId }),
+    body: JSON.stringify(payload),
   });
 
   const data = await res.json();

@@ -121,11 +121,20 @@ export function WeatherProvider({ children }) {
       if (isFav) {
         await removeFavorite(locationId, token);
       } else {
-        await addFavorite(locationId, token);
+        await addFavorite(locationId, token, {
+          city_name: currentWeather?.city_name,
+          country_code: currentWeather?.country_code,
+          latitude: currentWeather?.latitude,
+          longitude: currentWeather?.longitude,
+        });
       }
       await loadFavorites();
     } catch (err) {
-      alert(err.message);
+      if (err.message && (err.message.toLowerCase().includes('unauthorized') || err.message.toLowerCase().includes('expired'))) {
+        openAuthModal();
+      } else {
+        alert(err.message);
+      }
     }
   };
 

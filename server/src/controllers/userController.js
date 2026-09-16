@@ -1,4 +1,5 @@
 import { db } from '../config/db.js';
+import { getOrCreateLocation } from '../services/weatherService.js';
 
 /**
  * POST /api/users/favorites
@@ -9,7 +10,7 @@ import { db } from '../config/db.js';
 export async function addFavorite(req, res) {
   try {
     const userId = req.user.user_id;
-    const { location_id } = req.body;
+    const { location_id, city_name, country_code, latitude, longitude } = req.body;
 
     if (!location_id || isNaN(Number(location_id))) {
       return res.status(400).json({ error: 'Valid location_id is required in request body.' });
@@ -18,15 +19,21 @@ export async function addFavorite(req, res) {
     const locId = parseInt(location_id, 10);
 
     // Verify location exists
-    const location = await db.get('SELECT * FROM locations WHERE location_id = ? LIMIT 1', [locId]);
+    let location = await db.get('SELECT * FROM locations WHERE location_id = ? LIMIT 1', [locId]);
     if (!location) {
-      return res.status(404).json({ error: 'Location not found.' });
+      if (city_name && country_code) {
+        location = await getOrCreateLocation(city_name, country_code, latitude || 22.57, longitude || 88.36);
+      } else {
+        return res.status(404).json({ error: 'Location not found.' });
+      }
     }
+
+    const targetLocId = location.location_id;
 
     // Check for duplicate favorite (Lab 3 Gap 2 resolution: returns 409 Conflict)
     const existing = await db.get(
       'SELECT * FROM favourite_locations WHERE user_id = ? AND location_id = ? LIMIT 1',
-      [userId, locId]
+      [userId, targetLocId]
     );
 
     if (existing) {
@@ -39,14 +46,14 @@ export async function addFavorite(req, res) {
     const savedAt = new Date().toISOString();
     await db.run(
       'INSERT INTO favourite_locations (user_id, location_id, saved_at) VALUES (?, ?, ?)',
-      [userId, locId, savedAt]
+      [userId, targetLocId, savedAt]
     );
 
     // Matches Lab 4 Contract Test expectation:
     // Status 201 Created or 200 OK. Response: { "status": "success", "favorite_added": 12, "saved_at": "<timestamp>" }
     return res.status(201).json({
       status: 'success',
-      favorite_added: locId,
+      favorite_added: targetLocId,
       saved_at: savedAt,
     });
   } catch (err) {
