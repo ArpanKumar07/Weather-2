@@ -32,7 +32,7 @@ export default function SmartAdvice() {
   const adviceList = currentWeather.advice || [];
 
   return (
-    <div id="smart-advice" className="card-glass" style={{ height: '100%', display: 'flex', flexDirection: 'column', scrollMarginTop: '80px' }}>
+    <div className="card-glass" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="section-title-row" style={{ marginBottom: '1rem' }}>
         <h2 className="section-title" style={{ fontSize: '1.2rem' }}>
           <ShieldCheck size={20} color="var(--theme-accent)" />

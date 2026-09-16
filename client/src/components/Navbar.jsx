@@ -8,12 +8,10 @@ import {
   User,
   LogOut,
   Sparkles,
-  Menu,
 } from 'lucide-react';
 import { useWeather } from '../context/WeatherContext';
 import { useAuth } from '../context/AuthContext';
 import { searchCities } from '../services/api';
-import SideDrawer from './SideDrawer';
 
 export default function Navbar() {
   const {
@@ -30,7 +28,6 @@ export default function Navbar() {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const searchRef = useRef(null);
 
   // Debounced search query
@@ -191,21 +188,8 @@ export default function Navbar() {
               <span className="btn-label-desktop">Login / Register</span>
             </button>
           )}
-
-          {/* Hamburger Menu Button */}
-          <button
-            className="btn-icon"
-            onClick={() => setIsDrawerOpen(true)}
-            aria-label="Open Navigation Menu"
-            title="Open Navigation Menu"
-          >
-            <Menu size={20} />
-          </button>
         </div>
       </div>
-
-      {/* Side Navigation Drawer */}
-      <SideDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
     </header>
   );
 }

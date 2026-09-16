@@ -130,7 +130,7 @@ export default function LiveRadar() {
     : 'Live';
 
   return (
-    <div id="live-radar" className="radar-wrapper" style={{ scrollMarginTop: '80px' }}>
+    <div className="radar-wrapper">
       <div className="radar-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           <Radio size={20} color="#f43f5e" style={{ animation: 'pulse 1.5s infinite' }} />

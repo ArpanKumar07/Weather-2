@@ -104,10 +104,9 @@ export default function WeatherHero() {
 
   return (
     <div
-      id="weather-hero"
       ref={cardRef}
       className="card-glass hero-main-card card-3d"
-      style={{ transform: transformStyle, transition: transformStyle ? 'transform 0.1s ease-out' : 'var(--transition-smooth)', scrollMarginTop: '80px' }}
+      style={{ transform: transformStyle, transition: transformStyle ? 'transform 0.1s ease-out' : 'var(--transition-smooth)' }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >

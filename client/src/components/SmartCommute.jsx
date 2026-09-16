@@ -13,9 +13,6 @@ import {
   Info,
   CheckCircle2,
   ArrowRight,
-  Umbrella,
-  Eye,
-  CloudRain,
 } from 'lucide-react';
 import { useWeather } from '../context/WeatherContext';
 import { analyzeCommute, findBestDepartureTime } from '../utils/commuteScore';
@@ -26,8 +23,8 @@ export default function SmartCommute() {
   // Inputs
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
-
-  // Default to current local time formatted as HH:mm
+  
+  // Format current local time HH:mm as default
   const defaultTimeStr = useMemo(() => {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
@@ -46,11 +43,11 @@ export default function SmartCommute() {
     return d;
   }, [timeInput]);
 
-  // Display labels
-  const originDisplay = origin.trim() || currentWeather?.city_name || 'Home / Current';
-  const destinationDisplay = destination.trim() || 'Work / College';
+  // City display fallbacks
+  const originDisplay = origin.trim() || currentWeather?.city_name || 'Origin';
+  const destinationDisplay = destination.trim() || 'Destination';
 
-  // Commute Analysis using REAL forecast data
+  // Commute Analysis
   const commuteAnalysis = useMemo(() => {
     if (!currentWeather || !currentWeather.hourly) return null;
     return analyzeCommute(currentWeather.hourly, departureDate, durationMins);
@@ -65,9 +62,9 @@ export default function SmartCommute() {
   if (!currentWeather || !currentWeather.hourly) return null;
 
   return (
-    <div id="smart-commute" style={{ marginBottom: '2.5rem', scrollMarginTop: '80px' }}>
+    <div style={{ marginBottom: '2rem' }}>
       <div className="card-glass">
-        {/* Section Header */}
+        {/* Title Row */}
         <div className="section-title-row" style={{ marginBottom: '1.25rem' }}>
           <div>
             <h2 className="section-title" style={{ fontSize: '1.25rem' }}>
@@ -75,7 +72,7 @@ export default function SmartCommute() {
               <span>Smart Commute Planner</span>
             </h2>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-              Real-time transit weather intelligence & departure optimization for <strong style={{ color: 'var(--theme-accent)' }}>{currentWeather.city_name}</strong>
+              Transit weather intelligence & optimal departure advisory
             </div>
           </div>
 
@@ -90,18 +87,18 @@ export default function SmartCommute() {
             }}
           >
             <Sparkles size={14} color="#f59e0b" />
-            <span>Data-Driven Forecast</span>
+            <span>Multi-Factor Analysis</span>
           </div>
         </div>
 
-        {/* Input Parameters Form */}
+        {/* Input Parameters Grid */}
         <div
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
             gap: '1rem',
             marginBottom: '1.5rem',
-            padding: '1.15rem',
+            padding: '1.1rem',
             background: 'rgba(15, 23, 42, 0.4)',
             borderRadius: 'var(--radius-md)',
             border: '1px solid var(--card-border)',
@@ -111,12 +108,12 @@ export default function SmartCommute() {
           <div className="form-group">
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <MapPin size={13} color="var(--theme-accent)" />
-              <span>From</span>
+              <span>Origin</span>
             </label>
             <input
               type="text"
               className="form-input"
-              placeholder={currentWeather.city_name || 'Home / Current'}
+              placeholder={currentWeather.city_name || 'Enter origin...'}
               value={origin}
               onChange={(e) => setOrigin(e.target.value)}
             />
@@ -126,12 +123,12 @@ export default function SmartCommute() {
           <div className="form-group">
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <MapPin size={13} color="#f59e0b" />
-              <span>To</span>
+              <span>Destination</span>
             </label>
             <input
               type="text"
               className="form-input"
-              placeholder="College / Office"
+              placeholder="e.g. Office / Downtown"
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
             />
@@ -151,7 +148,7 @@ export default function SmartCommute() {
             />
           </div>
 
-          {/* Duration Selector */}
+          {/* Transit Duration */}
           <div className="form-group">
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <Timer size={13} color="var(--theme-accent)" />
@@ -187,94 +184,72 @@ export default function SmartCommute() {
           </div>
         </div>
 
-        {/* Handling Missing or Out of Range Data */}
-        {!commuteAnalysis || !commuteAnalysis.available ? (
-          <div
-            style={{
-              padding: '1.25rem',
-              borderRadius: 'var(--radius-md)',
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.25)',
-              color: '#fca5a5',
-              fontSize: '0.9rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-            }}
-          >
-            <AlertTriangle size={20} color="#ef4444" style={{ flexShrink: 0 }} />
-            <span>
-              {commuteAnalysis?.message ||
-                'Commute analysis unavailable: hourly forecast records for this time window could not be retrieved.'}
-            </span>
-          </div>
-        ) : (
+        {/* Results Section */}
+        {commuteAnalysis && commuteAnalysis.available && (
           <div>
-            {/* Top Route & Score Banner */}
+            {/* Route & Window Header */}
             <div
               style={{
                 display: 'flex',
                 flexWrap: 'wrap',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                gap: '1rem',
-                marginBottom: '1.25rem',
-                paddingBottom: '1rem',
-                borderBottom: '1px solid var(--card-border)',
+                gap: '0.75rem',
+                marginBottom: '1rem',
               }}
             >
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', fontWeight: 700, fontSize: '1.1rem' }}>
-                  <span>{originDisplay}</span>
-                  <ArrowRight size={16} color="var(--theme-accent)" />
-                  <span>{destinationDisplay}</span>
-                </div>
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                  Transit Window: <strong>{commuteAnalysis.departureTimeLabel}</strong> → <strong>{commuteAnalysis.arrivalTimeLabel}</strong> ({durationMins} minutes)
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, fontSize: '0.95rem' }}>
+                <span>{originDisplay}</span>
+                <ArrowRight size={14} color="var(--theme-accent)" />
+                <span>{destinationDisplay}</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}>
+                  ({commuteAnalysis.departureTimeLabel} – {commuteAnalysis.arrivalTimeLabel})
+                </span>
               </div>
 
-              {/* Deterministic Score Badge */}
+              {/* Commute Status Tag */}
               <div
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '0.55rem',
-                  padding: '0.45rem 1rem',
+                  gap: '0.4rem',
+                  padding: '0.35rem 0.85rem',
                   borderRadius: '999px',
-                  background: 'rgba(15, 23, 42, 0.6)',
-                  border: `1px solid ${commuteAnalysis.scoreColor}`,
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  background:
+                    commuteAnalysis.recType === 'danger'
+                      ? 'rgba(239, 68, 68, 0.2)'
+                      : commuteAnalysis.recType === 'warning'
+                      ? 'rgba(245, 158, 11, 0.2)'
+                      : 'var(--badge-bg)',
+                  color:
+                    commuteAnalysis.recType === 'danger'
+                      ? '#f87171'
+                      : commuteAnalysis.recType === 'warning'
+                      ? '#fbbf24'
+                      : 'var(--badge-text)',
+                  border: '1px solid var(--card-border)',
                 }}
               >
-                <ShieldCheck size={18} color={commuteAnalysis.scoreColor} />
-                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: commuteAnalysis.scoreColor }}>
-                  Score: {commuteAnalysis.score}/100
-                </span>
-                <span
-                  style={{
-                    fontSize: '0.75rem',
-                    padding: '0.15rem 0.5rem',
-                    borderRadius: '999px',
-                    background: 'rgba(255,255,255,0.08)',
-                    color: 'var(--text-muted)',
-                    fontWeight: 600,
-                  }}
-                >
-                  {commuteAnalysis.scoreTier}
-                </span>
+                {commuteAnalysis.recType === 'danger' ? (
+                  <AlertTriangle size={14} />
+                ) : (
+                  <CheckCircle2 size={14} />
+                )}
+                <span>Score: {commuteAnalysis.score}/100</span>
               </div>
             </div>
 
-            {/* Weather Metrics Grid */}
+            {/* Commute Weather Metrics Grid */}
             <div
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
                 gap: '0.9rem',
-                marginBottom: '1.25rem',
+                marginBottom: '1rem',
               }}
             >
-              {/* Rain Risk */}
               <div className="metric-pill">
                 <div className="metric-icon-box">
                   <Droplets size={18} />
@@ -285,18 +260,6 @@ export default function SmartCommute() {
                 </div>
               </div>
 
-              {/* Rain Amount */}
-              <div className="metric-pill">
-                <div className="metric-icon-box">
-                  <CloudRain size={18} />
-                </div>
-                <div className="metric-info">
-                  <span className="metric-label">Precip</span>
-                  <span className="metric-val">{commuteAnalysis.rainAmount} mm</span>
-                </div>
-              </div>
-
-              {/* Feels Like */}
               <div className="metric-pill">
                 <div className="metric-icon-box">
                   <Thermometer size={18} />
@@ -307,7 +270,6 @@ export default function SmartCommute() {
                 </div>
               </div>
 
-              {/* Wind & Gusts */}
               <div className="metric-pill">
                 <div className="metric-icon-box">
                   <Wind size={18} />
@@ -318,75 +280,23 @@ export default function SmartCommute() {
                 </div>
               </div>
 
-              {/* Visibility */}
-              <div className="metric-pill">
-                <div className="metric-icon-box">
-                  <Eye size={18} />
-                </div>
-                <div className="metric-info">
-                  <span className="metric-label">Visibility</span>
-                  <span className="metric-val">{commuteAnalysis.visibility} km</span>
-                </div>
-              </div>
-
-              {/* Condition */}
               <div className="metric-pill">
                 <div className="metric-icon-box">
                   <Sparkles size={18} />
                 </div>
                 <div className="metric-info">
-                  <span className="metric-label">Condition</span>
-                  <span className="metric-val" style={{ fontSize: '0.92rem' }}>
+                  <span className="metric-label">Conditions</span>
+                  <span className="metric-val" style={{ fontSize: '0.95rem' }}>
                     {commuteAnalysis.conditionText}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Deterministic Umbrella Notice Box */}
+            {/* Commute Recommendation Card */}
             <div
               style={{
-                padding: '0.9rem 1.1rem',
-                borderRadius: 'var(--radius-md)',
-                background:
-                  commuteAnalysis.rainRisk >= 60
-                    ? 'rgba(239, 68, 68, 0.15)'
-                    : commuteAnalysis.rainRisk >= 30
-                    ? 'rgba(245, 158, 11, 0.15)'
-                    : 'rgba(16, 185, 129, 0.12)',
-                border: `1px solid ${
-                  commuteAnalysis.rainRisk >= 60
-                    ? 'rgba(239, 68, 68, 0.35)'
-                    : commuteAnalysis.rainRisk >= 30
-                    ? 'rgba(245, 158, 11, 0.35)'
-                    : 'rgba(16, 185, 129, 0.3)'
-                }`,
-                marginBottom: '0.85rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-              }}
-            >
-              <Umbrella
-                size={20}
-                color={
-                  commuteAnalysis.rainRisk >= 60
-                    ? '#ef4444'
-                    : commuteAnalysis.rainRisk >= 30
-                    ? '#f59e0b'
-                    : '#10b981'
-                }
-                style={{ flexShrink: 0 }}
-              />
-              <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', fontWeight: 500 }}>
-                {commuteAnalysis.umbrellaNotice}
-              </div>
-            </div>
-
-            {/* Transit Conditions Recommendation */}
-            <div
-              style={{
-                padding: '0.9rem 1.1rem',
+                padding: '0.95rem 1.1rem',
                 borderRadius: 'var(--radius-md)',
                 background: 'rgba(15, 23, 42, 0.45)',
                 border: '1px solid var(--card-border)',
@@ -398,49 +308,22 @@ export default function SmartCommute() {
             >
               <ShieldCheck size={18} color="var(--theme-accent)" style={{ flexShrink: 0, marginTop: '2px' }} />
               <div>
-                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Transit Recommendation
                 </div>
-                <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', marginTop: '0.2rem', lineHeight: 1.45 }}>
+                <div style={{ fontSize: '0.92rem', color: 'var(--text-main)', marginTop: '0.2rem', lineHeight: 1.4 }}>
                   {commuteAnalysis.recommendation}
                 </div>
               </div>
             </div>
 
-            {/* Extreme Condition Warnings (if any) */}
-            {commuteAnalysis.extremeAlerts && commuteAnalysis.extremeAlerts.length > 0 && (
-              <div style={{ marginBottom: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {commuteAnalysis.extremeAlerts.map((alert, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: '0.85rem 1.1rem',
-                      borderRadius: 'var(--radius-md)',
-                      background: 'rgba(239, 68, 68, 0.15)',
-                      border: '1px solid rgba(239, 68, 68, 0.35)',
-                      color: '#fca5a5',
-                      fontSize: '0.88rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.7rem',
-                    }}
-                  >
-                    <AlertTriangle size={18} color="#ef4444" style={{ flexShrink: 0 }} />
-                    <div>
-                      <strong>⚠️ {alert.title}:</strong> {alert.message}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Weather Shift Notification */}
+            {/* Weather Shift Alert (if any detected) */}
             {commuteAnalysis.weatherShift && (
               <div
                 style={{
                   padding: '0.85rem 1.1rem',
                   borderRadius: 'var(--radius-md)',
-                  background: 'rgba(245, 158, 11, 0.12)',
+                  background: 'rgba(245, 158, 11, 0.1)',
                   border: '1px solid rgba(245, 158, 11, 0.3)',
                   color: '#fef08a',
                   fontSize: '0.88rem',
@@ -460,7 +343,7 @@ export default function SmartCommute() {
               <div
                 style={{
                   marginTop: '1rem',
-                  padding: '1.15rem',
+                  padding: '1.1rem',
                   borderRadius: 'var(--radius-md)',
                   background: departureRecommendation.isCurrentSelected
                     ? 'rgba(16, 185, 129, 0.1)'
@@ -485,7 +368,11 @@ export default function SmartCommute() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Sparkles
                       size={18}
-                      color={departureRecommendation.isCurrentSelected ? '#10b981' : 'var(--theme-accent)'}
+                      color={
+                        departureRecommendation.isCurrentSelected
+                          ? '#10b981'
+                          : 'var(--theme-accent)'
+                      }
                     />
                     <span
                       style={{
@@ -508,7 +395,7 @@ export default function SmartCommute() {
                       letterSpacing: '0.05em',
                     }}
                   >
-                    Departure Comparison (±30m)
+                    Window Optimization (±30m)
                   </span>
                 </div>
 
@@ -523,14 +410,14 @@ export default function SmartCommute() {
                   {departureRecommendation.reason}
                 </p>
 
-                {/* Nearby Alternatives Offset Buttons */}
+                {/* Nearby Alternatives Chips */}
                 {!departureRecommendation.isCurrentSelected && departureRecommendation.candidates && (
                   <div
                     style={{
                       display: 'flex',
                       flexWrap: 'wrap',
                       gap: '0.5rem',
-                      marginTop: '0.85rem',
+                      marginTop: '0.75rem',
                     }}
                   >
                     {departureRecommendation.candidates.map((cand) => {
@@ -555,7 +442,9 @@ export default function SmartCommute() {
                               : isCurrent
                               ? 'var(--card-border)'
                               : 'transparent',
-                            background: isRec ? 'var(--badge-bg)' : 'rgba(15, 23, 42, 0.5)',
+                            background: isRec
+                              ? 'var(--badge-bg)'
+                              : 'rgba(15, 23, 42, 0.5)',
                             color: isRec ? 'var(--theme-accent)' : 'var(--text-muted)',
                             fontSize: '0.75rem',
                             fontWeight: isRec ? 700 : 500,
@@ -563,11 +452,10 @@ export default function SmartCommute() {
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.35rem',
-                            transition: 'var(--transition-smooth)',
                           }}
                         >
                           <span>{cand.timeLabel}</span>
-                          <span style={{ opacity: 0.75 }}>({cand.score} pts)</span>
+                          <span style={{ opacity: 0.7 }}>({cand.score} pts)</span>
                           {isRec && <CheckCircle2 size={12} color="var(--theme-accent)" />}
                         </button>
                       );

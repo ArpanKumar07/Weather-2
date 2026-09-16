@@ -18,7 +18,7 @@ export default function ActivityPlanner() {
   const { city, region, recommendations } = currentWeather.activities;
 
   return (
-    <div id="activity-planner" style={{ marginBottom: '2.5rem', scrollMarginTop: '80px' }}>
+    <div style={{ marginBottom: '2.5rem' }}>
       <div className="section-title-row">
         <div>
           <h2 className="section-title">
