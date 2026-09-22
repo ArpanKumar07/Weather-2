@@ -3,6 +3,7 @@ import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
 import weatherRoutes from './routes/weatherRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import chatRoutes from './chatbot/chatRoutes.js';
 
 export const app = express();
 
@@ -37,10 +38,12 @@ app.get(['/api/health', '/health', '/'], (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/chat', chatRoutes);
 
 app.use('/auth', authRoutes);
 app.use('/weather', weatherRoutes);
 app.use('/users', userRoutes);
+app.use('/chat', chatRoutes);
 
 // 404 Handler
 app.use((req, res) => {
