@@ -15,6 +15,7 @@ import CityLandmark from './components/CityLandmark';
 import WeatherEffects from './components/WeatherEffects';
 import AuthModal from './components/AuthModal';
 import HistoryModal from './components/HistoryModal';
+import ChatbotWidget from './components/chatbot/ChatbotWidget';
 import Footer from './components/Footer';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import './styles/index.css';
@@ -104,9 +105,10 @@ function MainDashboard() {
         )}
       </main>
 
-      {/* Modals */}
+      {/* Modals & Chatbot Assistant */}
       <AuthModal />
       <HistoryModal />
+      <ChatbotWidget />
 
       {/* Footer with NFR / SLA Performance Gate */}
       <Footer />
