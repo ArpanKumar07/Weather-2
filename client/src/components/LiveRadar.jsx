@@ -76,9 +76,18 @@ export default function LiveRadar() {
     async function fetchRadarTimestamps() {
       try {
         const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+
+        if (!res.ok) {
+          throw new Error(`RainViewer API returned ${res.status}`);
+        }
+
         const data = await res.json();
+
         if (data && data.radar && data.radar.past) {
-          const frames = [...data.radar.past, ...(data.radar.nowcast || [])];
+          // Use only currently available past radar frames.
+          // No API key or nowcast data is required.
+          const frames = data.radar.past;
+
           setRadarFrames(frames);
           setRadarHost(data.host || 'https://tilecache.rainviewer.com');
           setCurrentFrameIndex(frames.length - 1);
@@ -87,6 +96,7 @@ export default function LiveRadar() {
         console.warn('RainViewer fetch error:', err);
       }
     }
+
     fetchRadarTimestamps();
   }, []);
 
@@ -102,6 +112,7 @@ export default function LiveRadar() {
     }
 
     const tileUrl = `${radarHost}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
+
     const newLayer = L.tileLayer(tileUrl, {
       opacity: opacity,
       zIndex: 10,
@@ -134,8 +145,12 @@ export default function LiveRadar() {
       <div className="radar-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           <Radio size={20} color="#f43f5e" style={{ animation: 'pulse 1.5s infinite' }} />
+
           <div>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Interactive Live Weather Radar</h2>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>
+              Interactive Live Weather Radar
+            </h2>
+
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               Real-time precipitation & cloud tracking via Global Doppler Radar
             </div>
@@ -154,14 +169,30 @@ export default function LiveRadar() {
               {isPlaying ? <Pause size={16} /> : <Play size={16} />}
             </button>
 
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, minWidth: '65px', textAlign: 'center' }}>
+            <span
+              style={{
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                minWidth: '65px',
+                textAlign: 'center',
+              }}
+            >
               {currentFrameTime}
             </span>
           </div>
 
           {/* Opacity Control */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              fontSize: '0.78rem',
+              color: 'var(--text-muted)',
+            }}
+          >
             <Layers size={14} />
+
             <input
               type="range"
               min="0.2"
@@ -169,17 +200,26 @@ export default function LiveRadar() {
               step="0.05"
               value={opacity}
               onChange={(e) => setOpacity(parseFloat(e.target.value))}
-              style={{ width: '80px', accentColor: 'var(--theme-accent)' }}
+              style={{
+                width: '80px',
+                accentColor: 'var(--theme-accent)',
+              }}
               title="Radar Layer Opacity"
             />
           </div>
 
           <button
             className="btn-pill"
-            style={{ padding: '0.35rem 0.85rem', fontSize: '0.78rem' }}
+            style={{
+              padding: '0.35rem 0.85rem',
+              fontSize: '0.78rem',
+            }}
             onClick={() => {
               if (mapInstanceRef.current && currentWeather) {
-                mapInstanceRef.current.setView([currentWeather.latitude, currentWeather.longitude], 7);
+                mapInstanceRef.current.setView(
+                  [currentWeather.latitude, currentWeather.longitude],
+                  7
+                );
               }
             }}
           >
