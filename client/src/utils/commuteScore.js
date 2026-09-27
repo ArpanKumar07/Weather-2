@@ -1,50 +1,158 @@
 /**
  * Commute Weather Intelligence & Best Departure Time Calculation
- * Fulfills Feature 2 ("Smart Commute") and Feature 4 ("Best Departure Time")
+ * 
+ * Smart Commute evaluates weather at:
+ * 1. Origin when the user leaves
+ * 2. Destination when the user arrives
+ *
+ * It also compares nearby departure times to find
+ * a better weather window.
  */
 
 import { calculateOutdoorScore } from './outdoorScore';
 
 /**
- * Calculates a weather commute penalty/score (0 to 100).
- * Higher is better (safer, drier, more comfortable).
+ * Calculates a commute score from 0 to 100.
+ * Higher score = better weather conditions.
+ *
+ * The score combines weather at the origin
+ * and destination.
  */
-export function calculateCommuteScore(hour) {
-  if (!hour) return 50;
-  // An outdoor score serves as a solid baseline, with extra weight on rain/roads and visibility
-  let score = calculateOutdoorScore(hour);
-  if (score === null) score = 70;
+export function calculateCommuteScore(
+  startWeather,
+  endWeather = null
+) {
+  if (!startWeather) {
+    return 50;
+  }
 
-  const pop = hour.precipitation_prob || 0;
-  const wind = hour.wind_speed || 0;
+  const startScore =
+    calculateOutdoorScore(
+      startWeather
+    );
 
-  // Road safety penalties
-  if (pop > 60) score -= 15;
-  if (wind > 35) score -= 15;
+  const endScore =
+    calculateOutdoorScore(
+      endWeather || startWeather
+    );
 
-  return Math.max(0, Math.min(100, score));
+  const safeStartScore =
+    startScore === null
+      ? 70
+      : startScore;
+
+  const safeEndScore =
+    endScore === null
+      ? 70
+      : endScore;
+
+  // Combine both locations
+  let score = Math.round(
+    (safeStartScore +
+      safeEndScore) /
+      2
+  );
+
+  const startPop =
+    startWeather.precipitation_prob ||
+    0;
+
+  const endPop =
+    endWeather?.precipitation_prob ||
+    0;
+
+  const maxRain = Math.max(
+    startPop,
+    endPop
+  );
+
+  const startWind =
+    startWeather.wind_speed || 0;
+
+  const endWind =
+    endWeather?.wind_speed || 0;
+
+  const maxWind = Math.max(
+    startWind,
+    endWind
+  );
+
+  /*
+   * Additional commute-specific
+   * road/weather penalties.
+   */
+  if (maxRain > 60) {
+    score -= 15;
+  }
+
+  if (maxWind > 35) {
+    score -= 15;
+  }
+
+  const startCondition =
+    (
+      startWeather.condition_text ||
+      ''
+    ).toLowerCase();
+
+  const endCondition =
+    (
+      endWeather?.condition_text ||
+      ''
+    ).toLowerCase();
+
+  if (
+    startCondition.includes(
+      'storm'
+    ) ||
+    endCondition.includes(
+      'storm'
+    ) ||
+    startCondition.includes(
+      'thunder'
+    ) ||
+    endCondition.includes(
+      'thunder'
+    )
+  ) {
+    score -= 15;
+  }
+
+  return Math.max(
+    0,
+    Math.min(100, score)
+  );
 }
 
 /**
- * Parses an ISO date or time string into minutes from start of day
+ * Finds the closest hourly forecast
+ * entry to a target date/time.
  */
-function getMinutesFromMidnight(dateObj) {
-  return dateObj.getHours() * 60 + dateObj.getMinutes();
-}
+export function getHourForecastForTime(
+  hourlyData,
+  targetDate
+) {
+  if (
+    !Array.isArray(hourlyData) ||
+    hourlyData.length === 0
+  ) {
+    return null;
+  }
 
-/**
- * Finds the closest hourly forecast entry matching a specific timestamp or minutes offset
- */
-export function getHourForecastForTime(hourlyData, targetDate) {
-  if (!Array.isArray(hourlyData) || hourlyData.length === 0) return null;
+  const targetMs =
+    targetDate.getTime();
 
-  const targetMs = targetDate.getTime();
   let closest = hourlyData[0];
   let minDiff = Infinity;
 
   for (const h of hourlyData) {
     if (!h.time) continue;
-    const diff = Math.abs(new Date(h.time).getTime() - targetMs);
+
+    const diff = Math.abs(
+      new Date(h.time).getTime() -
+        targetMs
+    );
+
     if (diff < minDiff) {
       minDiff = diff;
       closest = h;
@@ -55,175 +163,576 @@ export function getHourForecastForTime(hourlyData, targetDate) {
 }
 
 /**
- * Analyzes weather during the commute window.
- * Evaluates conditions at departure and through the transit duration.
+ * Analyzes weather during the complete commute.
+ *
+ * Origin:
+ *     departure weather
+ *
+ * Destination:
+ *     arrival weather
  */
-export function analyzeCommute(hourlyData, departureDate, durationMins = 30) {
-  if (!Array.isArray(hourlyData) || hourlyData.length === 0) {
+export function analyzeCommute(
+  originHourly,
+  destinationHourly,
+  departureDate,
+  durationMins = 30
+) {
+  if (
+    !Array.isArray(originHourly) ||
+    originHourly.length === 0
+  ) {
     return {
       available: false,
-      message: 'No forecast data available for commute analysis.',
+      message:
+        'No origin forecast data available.',
     };
   }
 
-  const depTime = departureDate instanceof Date ? departureDate : new Date(departureDate);
-  const arrivalTime = new Date(depTime.getTime() + durationMins * 60 * 1000);
-
-  const startWeather = getHourForecastForTime(hourlyData, depTime);
-  const endWeather = getHourForecastForTime(hourlyData, arrivalTime);
-
-  if (!startWeather) {
-    return { available: false, message: 'Could not match departure time to forecast.' };
+  if (
+    !Array.isArray(destinationHourly) ||
+    destinationHourly.length === 0
+  ) {
+    return {
+      available: false,
+      message:
+        'No destination forecast data available.',
+    };
   }
 
-  const rainRisk = Math.max(startWeather.precipitation_prob || 0, endWeather?.precipitation_prob || 0);
-  const avgTemp = Math.round(
-    ((startWeather.temperature || 25) + (endWeather?.temperature || startWeather.temperature || 25)) / 2
-  );
-  const avgFeelsLike = Math.round(
-    ((startWeather.feels_like ?? startWeather.temperature ?? 25) +
-      (endWeather?.feels_like ?? endWeather?.temperature ?? startWeather.feels_like ?? 25)) /
-      2
-  );
-  const maxWind = Math.round(Math.max(startWeather.wind_speed || 0, endWeather?.wind_speed || 0));
-  const condition = startWeather.condition_text || 'Clear';
+  const depTime =
+    departureDate instanceof Date
+      ? departureDate
+      : new Date(departureDate);
 
-  // Recommendation generation
-  let recommendation = 'Comfortable transit conditions.';
-  let recType = 'positive'; // 'positive' | 'warning' | 'danger' | 'info'
+  const arrivalTime =
+    new Date(
+      depTime.getTime() +
+        durationMins *
+          60 *
+          1000
+    );
 
-  if (rainRisk >= 60 || condition.toLowerCase().includes('storm') || condition.toLowerCase().includes('rain')) {
-    recommendation = 'Carry an umbrella or raincoat. Wet road conditions expected.';
+  /*
+   * Weather at origin when leaving
+   */
+  const startWeather =
+    getHourForecastForTime(
+      originHourly,
+      depTime
+    );
+
+  /*
+   * Weather at destination
+   * when arriving.
+   */
+  const endWeather =
+    getHourForecastForTime(
+      destinationHourly,
+      arrivalTime
+    );
+
+  if (!startWeather) {
+    return {
+      available: false,
+      message:
+        'Could not match departure time to origin forecast.',
+    };
+  }
+
+  if (!endWeather) {
+    return {
+      available: false,
+      message:
+        'Could not match arrival time to destination forecast.',
+    };
+  }
+
+  /*
+   * Rain risk considers both ends
+   * of the commute.
+   */
+  const rainRisk =
+    Math.max(
+      startWeather.precipitation_prob ||
+        0,
+      endWeather.precipitation_prob ||
+        0
+    );
+
+  /*
+   * Average temperature
+   */
+  const startTemp =
+    startWeather.temperature ??
+    25;
+
+  const endTemp =
+    endWeather.temperature ??
+    25;
+
+  const avgTemp =
+    Math.round(
+      (startTemp + endTemp) / 2
+    );
+
+  /*
+   * Average feels-like temperature
+   */
+  const startFeels =
+    startWeather.feels_like ??
+    startTemp;
+
+  const endFeels =
+    endWeather.feels_like ??
+    endTemp;
+
+  const avgFeelsLike =
+    Math.round(
+      (startFeels +
+        endFeels) /
+        2
+    );
+
+  /*
+   * Worst wind during commute
+   */
+  const maxWind =
+    Math.round(
+      Math.max(
+        startWeather.wind_speed ||
+          0,
+        endWeather.wind_speed ||
+          0
+      )
+    );
+
+  /*
+   * Conditions at both ends
+   */
+  const startCondition =
+    startWeather.condition_text ||
+    'Clear';
+
+  const endCondition =
+    endWeather.condition_text ||
+    'Clear';
+
+  const condition =
+    startCondition ===
+    endCondition
+      ? startCondition
+      : `${startCondition} → ${endCondition}`;
+
+  /*
+   * Recommendation
+   */
+  let recommendation =
+    'Comfortable transit conditions.';
+
+  let recType =
+    'positive';
+
+  const startConditionLower =
+    startCondition.toLowerCase();
+
+  const endConditionLower =
+    endCondition.toLowerCase();
+
+  if (
+    rainRisk >= 60 ||
+    startConditionLower.includes(
+      'storm'
+    ) ||
+    endConditionLower.includes(
+      'storm'
+    ) ||
+    startConditionLower.includes(
+      'rain'
+    ) ||
+    endConditionLower.includes(
+      'rain'
+    )
+  ) {
+    recommendation =
+      'Carry an umbrella or raincoat. Wet road conditions expected.';
+
     recType = 'danger';
-  } else if (rainRisk >= 35) {
-    recommendation = 'Moderate chance of scattered rain. Keep a compact umbrella handy.';
+  } else if (
+    rainRisk >= 35
+  ) {
+    recommendation =
+      'Moderate chance of scattered rain. Keep a compact umbrella handy.';
+
     recType = 'warning';
-  } else if (avgFeelsLike >= 35) {
-    recommendation = 'Hot and humid conditions expected during your commute. Stay hydrated.';
+  } else if (
+    avgFeelsLike >= 35
+  ) {
+    recommendation =
+      'Hot and humid conditions expected during your commute. Stay hydrated.';
+
     recType = 'warning';
-  } else if (avgFeelsLike <= 10) {
-    recommendation = 'Brisk and cold commute. Wear warm layers.';
+  } else if (
+    avgFeelsLike <= 10
+  ) {
+    recommendation =
+      'Brisk and cold commute. Wear warm layers.';
+
     recType = 'info';
-  } else if (maxWind >= 30) {
-    recommendation = 'Strong wind gusts expected. Extra caution required if traveling by bike or two-wheeler.';
+  } else if (
+    maxWind >= 30
+  ) {
+    recommendation =
+      'Strong wind gusts expected. Extra caution required if traveling by bike or two-wheeler.';
+
     recType = 'warning';
   } else {
-    recommendation = 'Low rain risk. Smooth and dry commute expected.';
+    recommendation =
+      'Low rain risk. Smooth and dry commute expected.';
+
     recType = 'positive';
   }
 
-  // Trend detection during or shortly after commute window
-  // Look 1-2 hours after arrival to spot incoming weather changes
-  const postCommuteTime = new Date(arrivalTime.getTime() + 60 * 60 * 1000);
-  const postWeather = getHourForecastForTime(hourlyData, postCommuteTime);
+  /*
+   * Check weather one hour after
+   * reaching destination.
+   */
+  const postCommuteTime =
+    new Date(
+      arrivalTime.getTime() +
+        60 *
+          60 *
+          1000
+    );
+
+  const postWeather =
+    getHourForecastForTime(
+      destinationHourly,
+      postCommuteTime
+    );
 
   let weatherShift = null;
-  if (postWeather) {
-    const postPop = postWeather.precipitation_prob || 0;
-    const postTemp = postWeather.temperature || 0;
 
-    if (postPop - rainRisk >= 25 && postPop >= 45) {
-      const postHourLabel = new Date(postWeather.time).toLocaleTimeString([], {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      });
-      weatherShift = `⚠️ Rain probability increases to ${postPop}% around ${postHourLabel}.`;
-    } else if (rainRisk >= 50 && postPop <= 20) {
-      const postHourLabel = new Date(postWeather.time).toLocaleTimeString([], {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      });
-      weatherShift = `🌤️ Rain expected to clear up around ${postHourLabel}.`;
-    } else if (postTemp - avgTemp >= 5 && postTemp >= 32) {
-      weatherShift = `🌡️ Temperatures rise rapidly later in the morning.`;
+  if (postWeather) {
+    const postPop =
+      postWeather.precipitation_prob ||
+      0;
+
+    const postTemp =
+      postWeather.temperature ||
+      0;
+
+    /*
+     * Rain increasing later
+     */
+    if (
+      postPop - rainRisk >=
+        25 &&
+      postPop >= 45
+    ) {
+      const postHourLabel =
+        new Date(
+          postWeather.time
+        ).toLocaleTimeString(
+          [],
+          {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+          }
+        );
+
+      weatherShift =
+        `⚠️ Rain probability increases to ${postPop}% around ${postHourLabel}.`;
+    }
+
+    /*
+     * Rain clearing later
+     */
+    else if (
+      rainRisk >= 50 &&
+      postPop <= 20
+    ) {
+      const postHourLabel =
+        new Date(
+          postWeather.time
+        ).toLocaleTimeString(
+          [],
+          {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+          }
+        );
+
+      weatherShift =
+        `🌤️ Rain expected to clear up around ${postHourLabel}.`;
+    }
+
+    /*
+     * Temperature increase
+     */
+    else if (
+      postTemp -
+        avgTemp >=
+        5 &&
+      postTemp >= 32
+    ) {
+      weatherShift =
+        '🌡️ Temperatures rise rapidly later in the morning.';
     }
   }
 
-  const commuteScore = calculateCommuteScore(startWeather);
+  /*
+   * Final commute score
+   */
+  const commuteScore =
+    calculateCommuteScore(
+      startWeather,
+      endWeather
+    );
 
   return {
     available: true,
-    departureTimeLabel: depTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }),
-    arrivalTimeLabel: arrivalTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }),
+
+    departureTimeLabel:
+      depTime.toLocaleTimeString(
+        [],
+        {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        }
+      ),
+
+    arrivalTimeLabel:
+      arrivalTime.toLocaleTimeString(
+        [],
+        {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        }
+      ),
+
     rainRisk,
-    windSpeed: maxWind,
-    feelsLike: avgFeelsLike,
-    temperature: avgTemp,
-    conditionText: condition,
+
+    windSpeed:
+      maxWind,
+
+    feelsLike:
+      avgFeelsLike,
+
+    temperature:
+      avgTemp,
+
+    conditionText:
+      condition,
+
     recommendation,
+
     recType,
+
     weatherShift,
-    score: commuteScore,
+
+    score:
+      commuteScore,
   };
 }
 
 /**
- * Compares nearby departure times to find the optimal commute window.
- * Candidate offsets: -30m, -15m, 0m (selected), +15m, +30m.
+ * Compares nearby departure times
+ * to find the optimal commute window.
+ *
+ * Candidates:
+ * -30 minutes
+ * -15 minutes
+ * selected time
+ * +15 minutes
+ * +30 minutes
  */
-export function findBestDepartureTime(hourlyData, baseDepartureDate, durationMins = 30) {
-  if (!Array.isArray(hourlyData) || hourlyData.length === 0) return null;
+export function findBestDepartureTime(
+  originHourly,
+  destinationHourly,
+  baseDepartureDate,
+  durationMins = 30
+) {
+  if (
+    !Array.isArray(originHourly) ||
+    originHourly.length === 0
+  ) {
+    return null;
+  }
 
-  const baseTime = baseDepartureDate instanceof Date ? baseDepartureDate : new Date(baseDepartureDate);
-  const offsets = [-30, -15, 0, 15, 30]; // minutes
+  if (
+    !Array.isArray(destinationHourly) ||
+    destinationHourly.length === 0
+  ) {
+    return null;
+  }
 
-  const candidateOptions = [];
+  const baseTime =
+    baseDepartureDate instanceof Date
+      ? baseDepartureDate
+      : new Date(baseDepartureDate);
 
-  for (const offset of offsets) {
-    const candidateDate = new Date(baseTime.getTime() + offset * 60 * 1000);
-    const analysis = analyzeCommute(hourlyData, candidateDate, durationMins);
+  const offsets = [
+    -30,
+    -15,
+    0,
+    15,
+    30,
+  ];
 
-    if (analysis.available) {
+  const candidateOptions =
+    [];
+
+  for (
+    const offset of offsets
+  ) {
+    const candidateDate =
+      new Date(
+        baseTime.getTime() +
+          offset *
+            60 *
+            1000
+      );
+
+    const analysis =
+      analyzeCommute(
+        originHourly,
+        destinationHourly,
+        candidateDate,
+        durationMins
+      );
+
+    if (
+      analysis.available
+    ) {
       candidateOptions.push({
-        offsetMinutes: offset,
-        departureDate: candidateDate,
-        timeLabel: candidateDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }),
+        offsetMinutes:
+          offset,
+
+        departureDate:
+          candidateDate,
+
+        timeLabel:
+          candidateDate.toLocaleTimeString(
+            [],
+            {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+            }
+          ),
+
         analysis,
-        score: analysis.score,
+
+        score:
+          analysis.score,
       });
     }
   }
 
-  if (candidateOptions.length === 0) return null;
+  if (
+    candidateOptions.length ===
+    0
+  ) {
+    return null;
+  }
 
-  // Find candidate with best score
-  let best = candidateOptions[0];
-  for (const option of candidateOptions) {
-    if (option.score > best.score) {
+  /*
+   * Find highest score.
+   */
+  let best =
+    candidateOptions[0];
+
+  for (
+    const option of
+    candidateOptions
+  ) {
+    if (
+      option.score >
+      best.score
+    ) {
       best = option;
     }
   }
 
-  const selectedOption = candidateOptions.find((c) => c.offsetMinutes === 0) || candidateOptions[0];
+  /*
+   * Selected time = offset 0
+   */
+  const selectedOption =
+    candidateOptions.find(
+      (c) =>
+        c.offsetMinutes === 0
+    ) ||
+    candidateOptions[0];
 
-  const scoreDiff = best.score - selectedOption.score;
-  const isSelectedBest = best.offsetMinutes === 0 || scoreDiff < 8;
+  const scoreDiff =
+    best.score -
+    selectedOption.score;
+
+  /*
+   * If the difference is small,
+   * keep selected time as optimal.
+   */
+  const isSelectedBest =
+    best.offsetMinutes === 0 ||
+    scoreDiff < 8;
 
   let reason = '';
-  if (isSelectedBest) {
-    reason = `Your selected departure at ${selectedOption.timeLabel} has the most favorable weather conditions among nearby windows.`;
-  } else {
-    const rainDiff = selectedOption.analysis.rainRisk - best.analysis.rainRisk;
-    const feelsDiff = selectedOption.analysis.feelsLike - best.analysis.feelsLike;
 
-    if (rainDiff >= 15) {
-      reason = `Lower rain probability (${best.analysis.rainRisk}% vs ${selectedOption.analysis.rainRisk}%) compared to ${selectedOption.timeLabel}.`;
-    } else if (feelsDiff >= 3) {
-      reason = `Cooler feels-like temperature (${best.analysis.feelsLike}°C vs ${selectedOption.analysis.feelsLike}°C) than later departure times.`;
+  if (
+    isSelectedBest
+  ) {
+    reason =
+      `Your selected departure at ${selectedOption.timeLabel} has the most favorable weather conditions among nearby windows.`;
+  } else {
+    const rainDiff =
+      selectedOption.analysis
+        .rainRisk -
+      best.analysis.rainRisk;
+
+    const feelsDiff =
+      selectedOption.analysis
+        .feelsLike -
+      best.analysis.feelsLike;
+
+    if (
+      rainDiff >= 15
+    ) {
+      reason =
+        `Lower rain probability (${best.analysis.rainRisk}% vs ${selectedOption.analysis.rainRisk}%) compared to ${selectedOption.timeLabel}.`;
+    } else if (
+      feelsDiff >= 3
+    ) {
+      reason =
+        `Cooler feels-like temperature (${best.analysis.feelsLike}°C vs ${selectedOption.analysis.feelsLike}°C) than later departure times.`;
     } else {
-      reason = `More stable and comfortable meteorological conditions than ${selectedOption.timeLabel}.`;
+      reason =
+        `More stable and comfortable meteorological conditions than ${selectedOption.timeLabel}.`;
     }
   }
 
   return {
-    recommendedTime: best.timeLabel,
-    recommendedDate: best.departureDate,
-    isCurrentSelected: isSelectedBest,
+    recommendedTime:
+      best.timeLabel,
+
+    recommendedDate:
+      best.departureDate,
+
+    isCurrentSelected:
+      isSelectedBest,
+
     reason,
-    bestScore: best.score,
-    selectedScore: selectedOption.score,
-    candidates: candidateOptions,
+
+    bestScore:
+      best.score,
+
+    selectedScore:
+      selectedOption.score,
+
+    candidates:
+      candidateOptions,
   };
 }
