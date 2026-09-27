@@ -5,6 +5,7 @@ import { useWeather } from '../context/WeatherContext';
 
 export default function LiveRadar() {
   const { currentWeather } = useWeather();
+
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
@@ -13,7 +14,9 @@ export default function LiveRadar() {
   const [radarFrames, setRadarFrames] = useState([]);
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [radarHost, setRadarHost] = useState('https://tilecache.rainviewer.com');
+  const [radarHost, setRadarHost] = useState(
+    'https://tilecache.rainviewer.com'
+  );
   const [opacity, setOpacity] = useState(0.75);
 
   // Initialize Map
@@ -22,19 +25,30 @@ export default function LiveRadar() {
 
     if (!mapInstanceRef.current) {
       const map = L.map(mapContainerRef.current, {
-        center: [currentWeather?.latitude || 22.57, currentWeather?.longitude || 88.36],
+        center: [
+          currentWeather?.latitude || 22.57,
+          currentWeather?.longitude || 88.36,
+        ],
         zoom: 7,
         zoomControl: false,
-        attributionControl: false,
+        attributionControl: true,
       });
 
-      // Sleek Dark CartoDB base tiles
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        subdomains: 'abcd',
-      }).addTo(map);
+      // OpenStreetMap background
+      // CSS filter keeps the existing dark radar appearance
+      L.tileLayer(
+        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {
+          maxZoom: 19,
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
+          className: 'dark-radar-basemap',
+        }
+      ).addTo(map);
 
-      L.control.zoom({ position: 'bottomright' }).addTo(map);
+      L.control.zoom({
+        position: 'bottomright',
+      }).addTo(map);
 
       mapInstanceRef.current = map;
     }
@@ -47,27 +61,91 @@ export default function LiveRadar() {
     };
   }, []);
 
+  // Add dark filter to OpenStreetMap tiles
+  useEffect(() => {
+    const styleId = 'dark-radar-map-style';
+
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+
+      style.id = styleId;
+
+      style.innerHTML = `
+        .dark-radar-basemap {
+          filter:
+            invert(1)
+            hue-rotate(180deg)
+            brightness(0.65)
+            contrast(1.15);
+        }
+
+        .leaflet-control-attribution {
+          background: rgba(15, 23, 42, 0.85) !important;
+          color: #94a3b8 !important;
+          font-size: 10px !important;
+        }
+
+        .leaflet-control-attribution a {
+          color: #38bdf8 !important;
+        }
+      `;
+
+      document.head.appendChild(style);
+    }
+  }, []);
+
   // Update Center when city changes
   useEffect(() => {
     if (mapInstanceRef.current && currentWeather) {
-      const { latitude, longitude, city_name } = currentWeather;
-      mapInstanceRef.current.setView([latitude, longitude], 7, { animate: true });
+      const {
+        latitude,
+        longitude,
+        city_name,
+      } = currentWeather;
+
+      mapInstanceRef.current.setView(
+        [latitude, longitude],
+        7,
+        {
+          animate: true,
+        }
+      );
 
       if (markerRef.current) {
         markerRef.current.remove();
       }
 
-      // Add stylish glowing marker
+      // Existing glowing location marker
       const customIcon = L.divIcon({
         className: 'custom-radar-pin',
-        html: `<div style="width:16px;height:16px;background:#38bdf8;border:3px solid #fff;border-radius:50%;box-shadow:0 0 15px #38bdf8;"></div>`,
+
+        html: `
+          <div
+            style="
+              width:16px;
+              height:16px;
+              background:#38bdf8;
+              border:3px solid #fff;
+              border-radius:50%;
+              box-shadow:0 0 15px #38bdf8;
+            "
+          ></div>
+        `,
+
         iconSize: [16, 16],
         iconAnchor: [8, 8],
       });
 
-      markerRef.current = L.marker([latitude, longitude], { icon: customIcon })
+      markerRef.current = L.marker(
+        [latitude, longitude],
+        {
+          icon: customIcon,
+        }
+      )
         .addTo(mapInstanceRef.current)
-        .bindPopup(`<strong>${city_name}</strong><br/>Live Weather Station`);
+        .bindPopup(
+          `<strong>${city_name}</strong><br/>Live Weather Station`
+        );
     }
   }, [currentWeather]);
 
@@ -75,98 +153,212 @@ export default function LiveRadar() {
   useEffect(() => {
     async function fetchRadarTimestamps() {
       try {
-        const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+        const res = await fetch(
+          'https://api.rainviewer.com/public/weather-maps.json'
+        );
 
         if (!res.ok) {
-          throw new Error(`RainViewer API returned ${res.status}`);
+          throw new Error(
+            `RainViewer API returned ${res.status}`
+          );
         }
 
         const data = await res.json();
 
-        if (data && data.radar && data.radar.past) {
-          // Use only currently available past radar frames.
-          // No API key or nowcast data is required.
+        if (
+          data &&
+          data.radar &&
+          data.radar.past
+        ) {
+          // Use currently available radar frames.
+          // No API key is required.
           const frames = data.radar.past;
 
           setRadarFrames(frames);
-          setRadarHost(data.host || 'https://tilecache.rainviewer.com');
-          setCurrentFrameIndex(frames.length - 1);
+
+          setRadarHost(
+            data.host ||
+              'https://tilecache.rainviewer.com'
+          );
+
+          setCurrentFrameIndex(
+            frames.length - 1
+          );
         }
       } catch (err) {
-        console.warn('RainViewer fetch error:', err);
+        console.warn(
+          'RainViewer fetch error:',
+          err
+        );
       }
     }
 
     fetchRadarTimestamps();
   }, []);
 
-  // Update Radar Layer on frame or opacity change
+  // Update radar layer
   useEffect(() => {
-    if (!mapInstanceRef.current || radarFrames.length === 0) return;
+    if (
+      !mapInstanceRef.current ||
+      radarFrames.length === 0
+    ) {
+      return;
+    }
 
-    const frame = radarFrames[currentFrameIndex];
+    const frame =
+      radarFrames[currentFrameIndex];
+
     if (!frame) return;
 
+    // Remove previous radar layer
     if (radarLayerRef.current) {
       radarLayerRef.current.remove();
     }
 
-    const tileUrl = `${radarHost}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
+    const tileUrl =
+      `${radarHost}${frame.path}` +
+      `/256/{z}/{x}/{y}/2/1_1.png`;
 
-    const newLayer = L.tileLayer(tileUrl, {
-      opacity: opacity,
-      zIndex: 10,
-    });
+    const newLayer = L.tileLayer(
+      tileUrl,
+      {
+        opacity: opacity,
+        zIndex: 10,
+      }
+    );
 
-    newLayer.addTo(mapInstanceRef.current);
-    radarLayerRef.current = newLayer;
-  }, [currentFrameIndex, radarFrames, radarHost, opacity]);
+    newLayer.addTo(
+      mapInstanceRef.current
+    );
 
-  // Play animation loop
+    radarLayerRef.current =
+      newLayer;
+  }, [
+    currentFrameIndex,
+    radarFrames,
+    radarHost,
+    opacity,
+  ]);
+
+  // Play radar animation
   useEffect(() => {
-    if (!isPlaying || radarFrames.length === 0) return;
+    if (
+      !isPlaying ||
+      radarFrames.length === 0
+    ) {
+      return;
+    }
 
     const interval = setInterval(() => {
-      setCurrentFrameIndex((prev) => (prev + 1) % radarFrames.length);
+      setCurrentFrameIndex(
+        (prev) =>
+          (prev + 1) %
+          radarFrames.length
+      );
     }, 1200);
 
-    return () => clearInterval(interval);
-  }, [isPlaying, radarFrames]);
+    return () =>
+      clearInterval(interval);
+  }, [
+    isPlaying,
+    radarFrames,
+  ]);
 
-  const currentFrameTime = radarFrames[currentFrameIndex]?.time
-    ? new Date(radarFrames[currentFrameIndex].time * 1000).toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : 'Live';
+  const currentFrameTime =
+    radarFrames[currentFrameIndex]?.time
+      ? new Date(
+          radarFrames[
+            currentFrameIndex
+          ].time * 1000
+        ).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : 'Live';
 
   return (
-    <div id="live-radar" className="radar-wrapper" style={{ scrollMarginTop: '80px' }}>
+    <div
+      id="live-radar"
+      className="radar-wrapper"
+      style={{
+        scrollMarginTop: '80px',
+      }}
+    >
       <div className="radar-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-          <Radio size={20} color="#f43f5e" style={{ animation: 'pulse 1.5s infinite' }} />
+
+        {/* Radar Title */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.65rem',
+          }}
+        >
+          <Radio
+            size={20}
+            color="#f43f5e"
+            style={{
+              animation:
+                'pulse 1.5s infinite',
+            }}
+          />
 
           <div>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>
+            <h2
+              style={{
+                fontSize: '1.2rem',
+                fontWeight: 700,
+              }}
+            >
               Interactive Live Weather Radar
             </h2>
 
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Real-time precipitation & cloud tracking via Global Doppler Radar
+            <div
+              style={{
+                fontSize: '0.75rem',
+                color:
+                  'var(--text-muted)',
+              }}
+            >
+              Real-time precipitation & cloud
+              tracking via Global Doppler Radar
             </div>
           </div>
         </div>
 
         {/* Player Controls */}
         <div className="radar-controls">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+
+          {/* Play / Pause + Time */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+          >
             <button
               className="btn-icon"
-              style={{ width: '36px', height: '36px' }}
-              onClick={() => setIsPlaying(!isPlaying)}
-              title={isPlaying ? 'Pause Radar' : 'Play Radar'}
+              style={{
+                width: '36px',
+                height: '36px',
+              }}
+              onClick={() =>
+                setIsPlaying(
+                  !isPlaying
+                )
+              }
+              title={
+                isPlaying
+                  ? 'Pause Radar'
+                  : 'Play Radar'
+              }
             >
-              {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+              {isPlaying ? (
+                <Pause size={16} />
+              ) : (
+                <Play size={16} />
+              )}
             </button>
 
             <span
@@ -181,14 +373,15 @@ export default function LiveRadar() {
             </span>
           </div>
 
-          {/* Opacity Control */}
+          {/* Opacity */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '0.4rem',
               fontSize: '0.78rem',
-              color: 'var(--text-muted)',
+              color:
+                'var(--text-muted)',
             }}
           >
             <Layers size={14} />
@@ -199,37 +392,63 @@ export default function LiveRadar() {
               max="1"
               step="0.05"
               value={opacity}
-              onChange={(e) => setOpacity(parseFloat(e.target.value))}
+              onChange={(e) =>
+                setOpacity(
+                  parseFloat(
+                    e.target.value
+                  )
+                )
+              }
               style={{
                 width: '80px',
-                accentColor: 'var(--theme-accent)',
+                accentColor:
+                  'var(--theme-accent)',
               }}
               title="Radar Layer Opacity"
             />
           </div>
 
+          {/* Center City */}
           <button
             className="btn-pill"
             style={{
-              padding: '0.35rem 0.85rem',
+              padding:
+                '0.35rem 0.85rem',
               fontSize: '0.78rem',
             }}
             onClick={() => {
-              if (mapInstanceRef.current && currentWeather) {
+              if (
+                mapInstanceRef.current &&
+                currentWeather
+              ) {
                 mapInstanceRef.current.setView(
-                  [currentWeather.latitude, currentWeather.longitude],
+                  [
+                    currentWeather.latitude,
+                    currentWeather.longitude,
+                  ],
                   7
                 );
               }
             }}
           >
-            <MapPin size={13} color="var(--theme-accent)" />
-            <span>Center City</span>
+            <MapPin
+              size={13}
+              color="var(--theme-accent)"
+            />
+
+            <span>
+              Center City
+            </span>
           </button>
+
         </div>
       </div>
 
-      <div ref={mapContainerRef} className="radar-map-container" />
+      {/* Map */}
+      <div
+        ref={mapContainerRef}
+        className="radar-map-container"
+      />
     </div>
   );
 }
