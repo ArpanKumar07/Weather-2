@@ -321,7 +321,6 @@ export default function SmartCommute() {
     setDestinationSuggestions([]);
     setLocationError('');
   };
-
   // Display selected place names
   const originDisplay = originPlace?.name || 'Origin';
   const destinationDisplay = destinationPlace?.name || 'Destination';
