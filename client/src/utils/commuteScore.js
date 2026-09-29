@@ -365,3 +365,190 @@ export function findBestDepartureTime(
     candidates: candidateOptions,
   };
 }
+
+/**
+ * Multi-Modal Transit Intelligence Engine
+ * Evaluates mode-specific weather safety ratings, risk factors,
+ * travel delay penalties, and safety gear requirements.
+ */
+export function evaluateMultiModalTransit(commuteAnalysis, baseDurationMins = 30) {
+  if (!commuteAnalysis || !commuteAnalysis.available) return null;
+
+  const { rainRisk = 0, windSpeed = 0, feelsLike = 25, temperature = 25, conditionText = '' } = commuteAnalysis;
+  const condLower = (conditionText || '').toLowerCase();
+  const isStormy =
+    condLower.includes('storm') ||
+    condLower.includes('thunder') ||
+    condLower.includes('violent') ||
+    condLower.includes('heavy rain');
+
+  // 1. CAR / CAB / RIDESHARE (Enclosed & Climate Controlled)
+  let carScore = 96;
+  if (rainRisk >= 60) carScore -= 14;
+  else if (rainRisk >= 30) carScore -= 6;
+  if (isStormy) carScore -= 16;
+  if (windSpeed >= 45) carScore -= 12;
+  carScore = Math.max(45, Math.min(100, carScore));
+
+  // 2. PUBLIC TRANSIT (METRO / BUS / TRAIN)
+  let transitScore = 95;
+  if (rainRisk >= 50) transitScore -= 8;
+  if (isStormy) transitScore -= 14;
+  transitScore = Math.max(55, Math.min(100, transitScore));
+
+  // 3. TWO-WHEELER (MOTORCYCLE / SCOOTER)
+  let twoWheelerScore = 90;
+  if (rainRisk >= 15) twoWheelerScore -= Math.round(rainRisk * 0.88);
+  if (isStormy) twoWheelerScore -= 45;
+  if (windSpeed >= 28) twoWheelerScore -= Math.round((windSpeed - 28) * 2.4);
+  if (temperature <= 14) twoWheelerScore -= Math.round((14 - temperature) * 1.8);
+  twoWheelerScore = Math.max(10, Math.min(100, twoWheelerScore));
+
+  // 4. BICYCLE / CYCLING
+  let bikeScore = 92;
+  if (rainRisk >= 15) bikeScore -= Math.round(rainRisk * 0.82);
+  if (isStormy) bikeScore -= 40;
+  if (windSpeed >= 18) bikeScore -= Math.round((windSpeed - 18) * 2.2);
+  if (feelsLike >= 33) bikeScore -= Math.round((feelsLike - 33) * 3.2);
+  if (feelsLike <= 8) bikeScore -= Math.round((8 - feelsLike) * 2.2);
+  bikeScore = Math.max(10, Math.min(100, bikeScore));
+
+  // 5. WALKING / ON FOOT
+  let walkScore = 94;
+  if (rainRisk >= 15) walkScore -= Math.round(rainRisk * 0.75);
+  if (isStormy) walkScore -= 30;
+  if (windSpeed >= 25) walkScore -= Math.round((windSpeed - 25) * 1.5);
+  if (feelsLike >= 33) walkScore -= Math.round((feelsLike - 33) * 3.5);
+  if (feelsLike <= 5) walkScore -= Math.round((5 - feelsLike) * 2.5);
+  walkScore = Math.max(10, Math.min(100, walkScore));
+
+  const getRatingInfo = (score) => {
+    if (score >= 85) return { status: 'Optimal', badgeClass: 'safe', color: '#10b981', label: 'Highly Recommended' };
+    if (score >= 70) return { status: 'Good', badgeClass: 'good', color: '#38bdf8', label: 'Good Conditions' };
+    if (score >= 50) return { status: 'Caution', badgeClass: 'caution', color: '#f59e0b', label: 'Proceed with Caution' };
+    return { status: 'High Hazard', badgeClass: 'danger', color: '#ef4444', label: 'Not Recommended' };
+  };
+
+  const modes = [
+    {
+      id: 'car',
+      name: 'Car / Cab',
+      category: 'Enclosed Motor',
+      icon: 'Car',
+      score: carScore,
+      rating: getRatingInfo(carScore),
+      travelTimeEst: rainRisk >= 60 ? Math.round(baseDurationMins * 1.35) : Math.round(baseDurationMins),
+      delayNote: rainRisk >= 60 ? `+${Math.round(baseDurationMins * 0.35)}m (Rain traffic delay)` : 'On schedule (Normal flow)',
+      comfortLevel: 'Climate Controlled (High)',
+      roadTraction: rainRisk >= 50 ? 'Moderate (Wet pavement)' : 'Optimal tire grip',
+      verdict: rainRisk >= 50
+        ? 'Safest & most comfortable motorized option in wet conditions. Expect city traffic slowdowns.'
+        : 'Smooth and effortless transit. Optimal windshield visibility.',
+      precautions: [
+        'Turn on defogger and wipers at appropriate speed',
+        'Maintain a 3-second braking distance on damp asphalt',
+        'Watch out for waterlogged low-lying underpasses',
+      ],
+      gearChecklist: ['Wiper blades check', 'Windshield defogger', 'Toll Fastag ready'],
+    },
+    {
+      id: 'public_transit',
+      name: 'Metro / Bus',
+      category: 'Mass Transit',
+      icon: 'Train',
+      score: transitScore,
+      rating: getRatingInfo(transitScore),
+      travelTimeEst: Math.round(baseDurationMins * 1.05),
+      delayNote: rainRisk >= 60 ? '+3–5m (Station transfer delay)' : 'Highly reliable schedule',
+      comfortLevel: 'High (Air conditioned)',
+      roadTraction: 'Fully immune (Protected tracks)',
+      verdict: rainRisk >= 40
+        ? 'Excellent choice during downpours. Avoids street traffic and keeps you 95% dry.'
+        : 'Eco-friendly, cost-effective, and immune to surface traffic jams.',
+      precautions: [
+        'Carry a compact umbrella for the first/last mile walk to the station',
+        'Watch for slippery polished station floor tiles',
+        'Check metro transit alerts for potential surface water delays',
+      ],
+      gearChecklist: ['Metro transit pass', 'Compact umbrella', 'Light jacket for AC cars'],
+    },
+    {
+      id: 'two_wheeler',
+      name: '2-Wheeler (Motorcycle/Scooter)',
+      category: 'Motorized Open',
+      icon: 'Scooter',
+      score: twoWheelerScore,
+      rating: getRatingInfo(twoWheelerScore),
+      travelTimeEst: rainRisk >= 50 ? Math.round(baseDurationMins * 1.2) : Math.round(baseDurationMins * 0.9),
+      delayNote: rainRisk >= 50 ? '+15–20% (Cautious slow riding)' : 'Zippy (Filters city traffic)',
+      comfortLevel: rainRisk >= 40 ? 'Wet / Exposed' : feelsLike >= 34 ? 'Hot & Humid' : 'Comfortable',
+      roadTraction: rainRisk >= 40 ? '⚠️ High skidding risk on road markings' : 'Normal tire friction',
+      verdict: rainRisk >= 40
+        ? 'Caution advised. Wet asphalt reduces emergency braking grip by ~40%.'
+        : windSpeed >= 28
+        ? 'Crosswinds detected. Stay cautious on elevated flyovers and bridges.'
+        : 'Pleasant riding conditions. Fast city mobility with good road grip.',
+      precautions: [
+        'Avoid painted zebra crossings & metal manhole covers when wet',
+        'Brake with progressive rear + front pressure; avoid abrupt grabs',
+        'Use anti-fog visor spray or keep visor cracked one notch',
+      ],
+      gearChecklist: ['Full-face helmet with clear visor', 'Waterproof rain slicker', 'Traction riding gloves'],
+    },
+    {
+      id: 'bicycle',
+      name: 'Bicycle / Cycling',
+      category: 'Active Transit',
+      icon: 'Bike',
+      score: bikeScore,
+      rating: getRatingInfo(bikeScore),
+      travelTimeEst: Math.round(baseDurationMins * 1.4),
+      delayNote: windSpeed >= 20 ? '+15% (Headwind resistance)' : 'Active cadence',
+      comfortLevel: feelsLike >= 33 ? 'Sweat hazard / Heat stress' : 'Fresh & Active',
+      roadTraction: rainRisk >= 35 ? 'Slippery rim brakes' : 'Smooth rolling',
+      verdict: rainRisk >= 35
+        ? 'Not recommended. Rim brakes lose initial bite in wet spray; road splatter.'
+        : windSpeed >= 22
+        ? 'Headwinds will demand extra pedal effort. Choose sheltered avenues.'
+        : 'Great cycling weather! Low wind resistance and comfortable temperature.',
+      precautions: [
+        'Pump tires 5 PSI lower for extra wet-road footprint',
+        'Use flashing front & rear LED lights for contrast visibility',
+        'Carry electrolyte hydration if temperature is elevated',
+      ],
+      gearChecklist: ['Cycling helmet', 'Mudguards / Fenders', 'High-visibility windbreaker'],
+    },
+    {
+      id: 'walking',
+      name: 'Walking / On Foot',
+      category: 'Pedestrian',
+      icon: 'Footprints',
+      score: walkScore,
+      rating: getRatingInfo(walkScore),
+      travelTimeEst: Math.round(baseDurationMins * 2.2),
+      delayNote: rainRisk >= 40 ? 'Puddle detours expected' : 'Brisk pedestrian pace',
+      comfortLevel: rainRisk >= 30 ? 'Umbrella needed' : feelsLike >= 33 ? 'Heavy perspiration' : 'Pleasant',
+      roadTraction: rainRisk >= 40 ? 'Waterlogged sidewalks' : 'Dry sidewalks',
+      verdict: rainRisk >= 50
+        ? 'Heavy rain exposure. Sturdy wind-resistant umbrella and waterproof footwear needed.'
+        : feelsLike >= 35
+        ? 'High heat index. Walk on shaded sides of avenues and drink cold water.'
+        : 'Invigorating walking weather! Perfect for a healthy walking commute.',
+      precautions: [
+        'Stick to elevated sidewalks to avoid curb splash from passing cars',
+        'Use UV-protective umbrella or sunglasses in bright sun',
+        'Stay clear of open roadside drains during heavy downpours',
+      ],
+      gearChecklist: ['Windproof umbrella', 'Waterproof walking shoes', 'UV sunglasses / Hat'],
+    },
+  ];
+
+  const sortedModes = [...modes].sort((a, b) => b.score - a.score);
+  const bestMode = sortedModes[0];
+
+  return {
+    modes,
+    bestMode,
+  };
+}
+
