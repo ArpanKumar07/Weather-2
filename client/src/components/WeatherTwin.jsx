@@ -1,25 +1,27 @@
 import React, { useMemo, useState } from 'react';
-import { Brain, Copy, Plus, Trash2, ArrowDown, Sun, CloudRain, Wind, AlertTriangle } from 'lucide-react';
+import { Brain, Copy, Plus, Trash2, ArrowDown, Sun, CloudRain, Wind, AlertTriangle, Sparkles, Clock3 } from 'lucide-react';
 import { useWeather } from '../context/WeatherContext';
-import PlanMyDay from './PlanMyDay';
-
-const DEFAULT_PLAN = [
-  { time: '08:00', activity: 'College' },
-  { time: '13:00', activity: 'Lunch outside' },
-  { time: '17:00', activity: 'Cricket' },
-  { time: '20:00', activity: 'Return home' },
-];
 
 function getWeatherForTime(hourly, time) {
   if (!hourly?.length || !time) return null;
-  const targetHour = Number(time.slice(0, 2));
+  const target = Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
 
   return hourly.reduce((closest, item) => {
-    const hour = Number(String(item.time || '').slice(11, 13));
-    if (!Number.isFinite(hour)) return closest;
-    const distance = Math.min(Math.abs(hour - targetHour), 24 - Math.abs(hour - targetHour));
+    if (!item?.time) return closest;
+    const date = new Date(item.time);
+    if (Number.isNaN(date.getTime())) return closest;
+    const minutes = date.getHours() * 60 + date.getMinutes();
+    const distance = Math.abs(minutes - target);
     return !closest || distance < closest.distance ? { item, distance } : closest;
   }, null)?.item || null;
+}
+
+function formatTime12(time) {
+  if (!time) return '';
+  const [h, m] = time.split(':').map(Number);
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 || 12;
+  return `${hour}:${String(m).padStart(2, '0')} ${suffix}`;
 }
 
 function getConditionMeta(weather) {
@@ -32,56 +34,149 @@ function getConditionMeta(weather) {
   return { icon: <Sun size={15} />, tone: 'good' };
 }
 
+function weatherFlags(weather) {
+  if (!weather) return { rain: 0, temp: 25, uv: 0, storm: false };
+  const condition = (weather.condition_text || '').toLowerCase();
+  return {
+    rain: weather.precipitation_prob ?? 0,
+    temp: weather.feels_like ?? weather.temperature ?? 25,
+    uv: weather.uv_index ?? 0,
+    storm: condition.includes('storm') || condition.includes('thunder'),
+  };
+}
+
+function activityType(activity = '') {
+  const text = activity.toLowerCase();
+  if (/cricket|football|soccer|tennis|run|running|jog|walk|walking|cycling|bike|gym|exercise|workout|sport/.test(text)) return 'outdoor';
+  if (/travel|commute|return|college|school|office|drive|ride|bus|metro/.test(text)) return 'travel';
+  return 'general';
+}
+
 function getWarning(weather, activity) {
   if (!weather) return null;
-  const rain = weather.precipitation_prob ?? 0;
-  const uv = weather.uv_index ?? 0;
-  const temp = weather.temperature ?? 0;
-  const text = (weather.condition_text || '').toLowerCase();
+  const f = weatherFlags(weather);
+  const type = activityType(activity);
 
-  if (text.includes('storm') || rain >= 70) return `${activity} may be affected by rain or storms.`;
-  if (uv >= 8) return `${activity} has very high UV conditions.`;
-  if (temp >= 35) return `${activity} may feel very hot at ${Math.round(temp)}°C.`;
-  if (rain >= 50) return `${activity} has unfavorable rain conditions.`;
+  if (f.storm || f.rain >= 70) return 'Rain/storm risk';
+  if (type === 'outdoor' && f.rain >= 50) return 'Outdoor activity may be affected by rain';
+  if (type === 'outdoor' && (f.temp >= 35 || f.uv >= 8)) return 'High heat/UV for outdoor activity';
+  if (type === 'travel' && f.rain >= 50) return 'Rain may affect your travel';
+  if (f.temp >= 38) return 'Very high heat';
   return null;
+}
+
+function scoreWeather(weather, type) {
+  const f = weatherFlags(weather);
+  let score = f.rain * 1.5 + Math.max(0, f.temp - 30) * 7 + Math.max(0, f.uv - 6) * 5;
+  if (f.storm) score += 120;
+  if (type === 'outdoor') score += f.rain * 1.2 + Math.max(0, f.temp - 33) * 8;
+  if (type === 'travel') score += f.rain * 1.8 + (f.storm ? 40 : 0);
+  return score;
+}
+
+function findBetterTime(hourly, currentTime, activity) {
+  if (!hourly?.length) return null;
+  const type = activityType(activity);
+  const current = Number(currentTime.slice(0, 2)) * 60 + Number(currentTime.slice(3, 5));
+  const currentWeather = getWeatherForTime(hourly, currentTime);
+  const currentScore = scoreWeather(currentWeather, type);
+
+  const options = hourly
+    .filter((item) => item?.time)
+    .map((item) => {
+      const date = new Date(item.time);
+      if (Number.isNaN(date.getTime())) return null;
+      const minutes = date.getHours() * 60 + date.getMinutes();
+      const distance = Math.abs(minutes - current);
+      return { item, minutes, distance, score: scoreWeather(item, type) };
+    })
+    .filter(Boolean)
+    .filter((item) => item.distance >= 30 && item.score + 8 < currentScore)
+    .sort((a, b) => (a.score - b.score) || (a.distance - b.distance));
+
+  if (!options.length) return null;
+  const best = options[0];
+  return `${formatTime12(`${String(Math.floor(best.minutes / 60)).padStart(2, '0')}:${String(best.minutes % 60).padStart(2, '0')}`)}`;
+}
+
+function TimePicker({ value, onChange }) {
+  const [hour, minute, period] = (() => {
+    const [h, m] = value.split(':').map(Number);
+    return [h % 12 || 12, m, h >= 12 ? 'PM' : 'AM'];
+  })();
+
+  const update = (nextHour = hour, nextMinute = minute, nextPeriod = period) => {
+    let h = nextHour % 12;
+    if (nextPeriod === 'PM') h += 12;
+    onChange(`${String(h).padStart(2, '0')}:${String(nextMinute).padStart(2, '0')}`);
+  };
+
+  return (
+    <div className="weather-twin-time-picker" aria-label="Activity time">
+      <Clock3 size={14} />
+      <select value={hour} onChange={(e) => update(Number(e.target.value))} aria-label="Hour">
+        {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => <option key={h} value={h}>{h}</option>)}
+      </select>
+      <span>:</span>
+      <select value={minute} onChange={(e) => update(hour, Number(e.target.value))} aria-label="Minute">
+        {Array.from({ length: 12 }, (_, i) => i * 5).map((m) => <option key={m} value={m}>{String(m).padStart(2, '0')}</option>)}
+      </select>
+      <select value={period} onChange={(e) => update(hour, minute, e.target.value)} aria-label="AM or PM">
+        <option>AM</option>
+        <option>PM</option>
+      </select>
+    </div>
+  );
 }
 
 export default function WeatherTwin() {
   const { currentWeather, tempUnit, convertTemp } = useWeather();
-  const [plan, setPlan] = useState(DEFAULT_PLAN);
+  const [plan, setPlan] = useState([]);
+  const [analyzed, setAnalyzed] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const simulation = useMemo(() => {
-    return plan.map((entry) => ({
+  const simulation = useMemo(() => plan.map((entry) => {
+    const weather = getWeatherForTime(currentWeather?.hourly, entry.time);
+    return {
       ...entry,
-      weather: getWeatherForTime(currentWeather?.hourly, entry.time),
-    }));
-  }, [plan, currentWeather?.hourly]);
-
-  const warning = simulation.find((entry) => getWarning(entry.weather, entry.activity));
+      weather,
+      warning: getWarning(weather, entry.activity),
+      betterTime: getWarning(weather, entry.activity) ? findBetterTime(currentWeather?.hourly, entry.time, entry.activity) : null,
+    };
+  }), [plan, currentWeather?.hourly]);
 
   const updatePlan = (index, field, value) => {
+    setAnalyzed(false);
     setPlan((current) => current.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
   };
 
-  const addPlanItem = () => setPlan((current) => [...current, { time: '18:00', activity: 'New activity' }]);
+  const addPlanItem = () => {
+    setAnalyzed(false);
+    setPlan((current) => [...current, { time: '18:00', activity: '' }]);
+  };
 
   const removePlanItem = (index) => {
+    setAnalyzed(false);
     setPlan((current) => current.filter((_, i) => i !== index));
   };
 
-  const copySimulation = async () => {
-    const text = simulation
-      .map((item) => `${item.time} - ${item.activity}: ${item.weather ? `${convertTemp(item.weather.temperature)}°${tempUnit}, ${item.weather.condition_text}` : 'Weather unavailable'}`)
-      .join('\n');
+  const runSimulation = () => {
+    if (!plan.length || plan.some((item) => !item.activity.trim())) return;
+    setAnalyzed(true);
+    setCopied(false);
+  };
 
+  const copySimulation = async () => {
+    const text = simulation.map((item) => {
+      const weather = item.weather;
+      const suggestion = item.betterTime ? ` — Suggested: ${item.betterTime}` : '';
+      return `${formatTime12(item.time)} - ${item.activity}: ${weather ? `${convertTemp(weather.temperature)}°${tempUnit}, ${weather.condition_text}` : 'Weather unavailable'}${suggestion}`;
+    }).join('\n');
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
-    } catch {
-      setCopied(false);
-    }
+    } catch { setCopied(false); }
   };
 
   if (!currentWeather?.hourly) return null;
@@ -95,10 +190,9 @@ export default function WeatherTwin() {
             <span>Weather Twin — Digital Twin of Your Day</span>
           </h2>
           <div className="weather-twin-subtitle">
-            Enter your plan and MAUSAM360 simulates the weather you are likely to experience throughout the day.
+            Add your activities and MAUSAM360 will simulate the weather you are likely to experience throughout your day.
           </div>
         </div>
-        <PlanMyDay />
       </div>
 
       <div className="weather-twin-layout">
@@ -110,14 +204,13 @@ export default function WeatherTwin() {
             </button>
           </div>
 
+          {plan.length === 0 && (
+            <div className="weather-twin-empty-plan">Add activities to build your day.</div>
+          )}
+
           {plan.map((item, index) => (
             <div className="weather-twin-input-row" key={`${index}-${item.time}`}>
-              <input
-                type="time"
-                value={item.time}
-                onChange={(e) => updatePlan(index, 'time', e.target.value)}
-                aria-label="Activity time"
-              />
+              <TimePicker value={item.time} onChange={(value) => updatePlan(index, 'time', value)} />
               <input
                 type="text"
                 value={item.activity}
@@ -132,44 +225,74 @@ export default function WeatherTwin() {
               )}
             </div>
           ))}
+
+          <button
+            type="button"
+            className="weather-twin-plan-button"
+            onClick={runSimulation}
+            disabled={!plan.length || plan.some((item) => !item.activity.trim())}
+          >
+            <Sparkles size={15} />
+            PLAN MY DAY
+          </button>
         </div>
 
         <div className="weather-twin-result">
           <div className="weather-twin-result-top">
             <span>YOUR DAY WEATHER SIMULATION</span>
-            <button type="button" className="weather-twin-copy" onClick={copySimulation} title="Copy simulation">
-              <Copy size={17} />
-            </button>
+            {analyzed && (
+              <button type="button" className="weather-twin-copy" onClick={copySimulation} title="Copy simulation">
+                <Copy size={17} />
+              </button>
+            )}
           </div>
 
-          <div className="weather-twin-timeline">
-            {simulation.map((item, index) => {
-              const weather = item.weather;
-              const meta = getConditionMeta(weather);
-              return (
-                <React.Fragment key={`${item.time}-${index}`}>
-                  <div className="weather-twin-row">
-                    <span className="weather-twin-time">{item.time}</span>
-                    <span className={`weather-twin-dot ${meta.tone}`}>{meta.icon}</span>
-                    <span className="weather-twin-activity">{item.activity}</span>
-                    <span className="weather-twin-temp">
-                      {weather ? `${convertTemp(weather.temperature)}°${tempUnit}` : '--'}
-                    </span>
-                    {weather && (weather.precipitation_prob ?? 0) >= 50 && <CloudRain size={14} className="weather-twin-rain" />}
-                    {weather && (weather.uv_index ?? 0) >= 6 && <Sun size={14} className="weather-twin-uv" />}
-                  </div>
-                  {index < simulation.length - 1 && <div className="weather-twin-arrow"><ArrowDown size={13} /></div>}
-                </React.Fragment>
-              );
-            })}
-          </div>
+          {!analyzed ? (
+            <div className="weather-twin-result-empty">
+              <Sparkles size={25} />
+              <span>Your simulation will appear here.</span>
+              <small>Add your activities, then click <strong>PLAN MY DAY</strong>.</small>
+            </div>
+          ) : (
+            <>
+              <div className="weather-twin-timeline">
+                {simulation.map((item, index) => {
+                  const weather = item.weather;
+                  const meta = getConditionMeta(weather);
+                  return (
+                    <React.Fragment key={`${item.time}-${index}`}>
+                      <div className="weather-twin-row">
+                        <span className="weather-twin-time">{formatTime12(item.time)}</span>
+                        <span className={`weather-twin-dot ${meta.tone}`}>{meta.icon}</span>
+                        <span className="weather-twin-activity">{item.activity}</span>
+                        <span className="weather-twin-temp">{weather ? `${convertTemp(weather.temperature)}°${tempUnit}` : '--'}</span>
+                        {weather && (weather.precipitation_prob ?? 0) >= 50 && <CloudRain size={14} className="weather-twin-rain" />}
+                        {weather && (weather.uv_index ?? 0) >= 6 && <Sun size={14} className="weather-twin-uv" />}
+                      </div>
+                      {item.warning && (
+                        <div className={`weather-twin-suggestion ${item.betterTime ? 'has-time' : ''}`}>
+                          <AlertTriangle size={13} />
+                          <span>{item.warning}{item.betterTime ? ` → Consider moving it to ${item.betterTime}.` : '.'}</span>
+                        </div>
+                      )}
+                      {index < simulation.length - 1 && <div className="weather-twin-arrow"><ArrowDown size={13} /></div>}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
 
-          <div className={`weather-twin-notice ${warning ? 'warning' : 'good'}`}>
-            {warning ? <AlertTriangle size={16} /> : <Wind size={16} />}
-            <span>{warning ? getWarning(warning.weather, warning.activity) : 'Your planned day currently has favorable weather conditions.'}</span>
-          </div>
+              <div className="weather-twin-notice warning">
+                <Wind size={16} />
+                <span>
+                  {simulation.some((item) => item.betterTime)
+                    ? 'MAUSAM360 found timing changes that may make your day more weather-friendly.'
+                    : 'Your planned activities currently have no major timing changes recommended.'}
+                </span>
+              </div>
 
-          {copied && <div className="weather-twin-copied">Simulation copied.</div>}
+              {copied && <div className="weather-twin-copied">Simulation copied.</div>}
+            </>
+          )}
         </div>
       </div>
     </section>
