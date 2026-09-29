@@ -1537,3 +1537,546 @@ button, input, select {
   }
 }
 
+/* ==========================================================================
+   Emergency Catastrophic Alert Button & Relief Center Modal
+   ========================================================================== */
+
+/* Red Alert Button in Navbar */
+.btn-emergency-alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.46rem 0.95rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  border: 1px solid rgba(254, 202, 202, 0.45);
+  color: #ffffff;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #991b1b 100%);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+  transition: var(--transition-smooth);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-emergency-alert:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.7);
+  border-color: rgba(254, 202, 202, 0.75);
+}
+
+/* Pulsing effect when an active hazard is detected */
+.btn-emergency-hazard {
+  animation: redAlertPulse 1.8s infinite;
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 50%, #be123c 100%);
+  border-color: #fda4af;
+}
+
+@keyframes redAlertPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.75), 0 4px 14px rgba(239, 68, 68, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 9px rgba(239, 68, 68, 0), 0 6px 22px rgba(239, 68, 68, 0.85);
+  }
+}
+
+.alert-siren-anim {
+  animation: sirenWiggle 1.2s ease-in-out infinite;
+  color: #ffffff;
+}
+
+@keyframes sirenWiggle {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(-14deg) scale(1.1);
+  }
+  75% {
+    transform: rotate(14deg) scale(1.1);
+  }
+}
+
+.alert-count-badge {
+  background: #ffffff;
+  color: #dc2626;
+  border-radius: 9999px;
+  padding: 1px 7px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.alert-safe-badge {
+  background: rgba(16, 185, 129, 0.95);
+  color: #ffffff;
+  border-radius: 9999px;
+  padding: 1px 8px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Catastrophic Alert / Relief Modal Content */
+.alert-modal-content {
+  max-width: 680px;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 2rem;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+}
+
+.alert-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  margin-bottom: 1.25rem;
+}
+
+.alert-modal-badge-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.alert-modal-badge-icon.danger-glow {
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 24px rgba(239, 68, 68, 0.35);
+}
+
+.alert-modal-badge-icon.safe-glow {
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.35);
+}
+
+.alert-modal-pretitle {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.25rem;
+}
+
+.alert-modal-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  margin: 0;
+  background: linear-gradient(90deg, #ffffff, var(--theme-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.2;
+}
+
+/* Simulation Scenario Switcher Chips */
+.alert-scenario-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.55rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 1.4rem;
+  flex-wrap: wrap;
+}
+
+.scenario-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.scenario-chips {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.scenario-chip {
+  padding: 0.32rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.scenario-chip:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.scenario-chip.active {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: var(--theme-accent);
+  color: var(--theme-accent);
+}
+
+.scenario-chip.active-danger {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+
+.scenario-chip.active-warning {
+  background: rgba(249, 115, 22, 0.25);
+  border-color: #f97316;
+  color: #fdba74;
+}
+
+.scenario-chip.active-storm {
+  background: rgba(168, 85, 247, 0.25);
+  border-color: #a855f7;
+  color: #d8b4fe;
+}
+
+.scenario-chip.active-safe {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+  color: #6ee7b7;
+}
+
+/* Hazards / Disaster List */
+.emergency-broadcast-banner {
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.55);
+  border-radius: 12px;
+  padding: 0.8rem 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #fecaca;
+  font-size: 0.88rem;
+  margin-bottom: 1.1rem;
+}
+
+.hazard-card {
+  border-radius: 16px;
+  border: 1px solid;
+  padding: 1.35rem;
+  margin-bottom: 1.1rem;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.hazard-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-bottom: 0.85rem;
+}
+
+.hazard-icon-box {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hazard-severity-tag {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hazard-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  margin: 0.1rem 0 0;
+  color: #ffffff;
+}
+
+.hazard-summary {
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: #f8fafc;
+  margin-bottom: 0.75rem;
+}
+
+.hazard-threshold-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-top: 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hazard-impact-box {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+  margin: 0.85rem 0;
+  font-size: 0.88rem;
+  border-left: 3px solid #ef4444;
+  color: #f1f5f9;
+  line-height: 1.45;
+}
+
+.impact-label {
+  display: block;
+  font-weight: 700;
+  color: #fca5a5;
+  margin-bottom: 0.25rem;
+  font-size: 0.82rem;
+}
+
+.hazard-precautions-box {
+  margin-top: 0.9rem;
+}
+
+.precautions-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-bottom: 0.55rem;
+}
+
+.precautions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.precautions-list li {
+  position: relative;
+  padding-left: 1.25rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: #cbd5e1;
+}
+
+.precautions-list li::before {
+  content: '🛡️';
+  position: absolute;
+  left: 0;
+  font-size: 0.75rem;
+  top: 1px;
+}
+
+.hazard-callout {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  margin-top: 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #fecaca;
+}
+
+/* ================= RELIEF STATE STYLING ================= */
+.relief-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.relief-hero-banner {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.08));
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 16px;
+  padding: 1.6rem;
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  box-shadow: 0 8px 30px rgba(16, 185, 129, 0.15);
+}
+
+.relief-icon-pulse {
+  background: rgba(16, 185, 129, 0.15);
+  border-radius: 50%;
+  padding: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.35);
+}
+
+.relief-hero-text {
+  flex: 1;
+}
+
+.relief-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.25);
+  color: #6ee7b7;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.45rem;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.relief-headline {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 0.45rem;
+  line-height: 1.25;
+}
+
+.relief-message {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: #e2e8f0;
+  margin: 0;
+}
+
+.relief-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.85rem;
+}
+
+@media (max-width: 540px) {
+  .relief-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.relief-metric-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1rem;
+  transition: var(--transition-smooth);
+}
+
+.relief-metric-card:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.08);
+  transform: translateY(-2px);
+}
+
+.relief-metric-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.relief-metric-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.relief-metric-status {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.15);
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+}
+
+.relief-metric-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-bottom: 0.2rem;
+}
+
+.relief-metric-val {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 0.25rem;
+}
+
+.relief-metric-detail {
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  line-height: 1.35;
+}
+
+.relief-reassurance-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 12px;
+  padding: 0.95rem 1.15rem;
+  font-size: 0.86rem;
+  color: #a7f3d0;
+  line-height: 1.5;
+}
+
+/* Modal Footer */
+.alert-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.alert-emergency-helpline {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.alert-emergency-helpline strong {
+  color: #ffffff;
+}
+
+
