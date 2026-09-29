@@ -13,13 +13,58 @@ import {
   Info,
   CheckCircle2,
   ArrowRight,
+  Car,
+  Train,
+  Bike,
+  Footprints,
+  Check,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { useWeather } from '../context/WeatherContext';
 import { getCurrentWeather, searchPlaces } from '../services/api';
 import {
   analyzeCommute,
   findBestDepartureTime,
+  evaluateMultiModalTransit,
 } from '../utils/commuteScore';
+
+function ScooterIcon({ size = 20, color = 'currentColor' }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="18" cy="18" r="3" />
+      <path d="M6 15h6l3-8h2" />
+      <path d="M14 7h3" />
+      <path d="M9 15l2-6h3" />
+    </svg>
+  );
+}
+
+function renderTransitIcon(iconName, color = 'currentColor', size = 20) {
+  switch (iconName) {
+    case 'Car':
+      return <Car size={size} color={color} />;
+    case 'Train':
+      return <Train size={size} color={color} />;
+    case 'Bike':
+      return <Bike size={size} color={color} />;
+    case 'Footprints':
+      return <Footprints size={size} color={color} />;
+    case 'Scooter':
+    default:
+      return <ScooterIcon size={size} color={color} />;
+  }
+}
 
 const MAX_SUGGESTIONS = 5;
 const SEARCH_DELAY = 300;
@@ -376,6 +421,30 @@ export default function SmartCommute() {
     departureDate,
     durationMins,
   ]);
+
+  // Mode Selection & Multi-Modal Transit Analysis
+  const [selectedModeId, setSelectedModeId] = useState('car');
+  const [showComparisonTable, setShowComparisonTable] = useState(false);
+
+  const multiModalAnalysis = useMemo(() => {
+    return evaluateMultiModalTransit(commuteAnalysis, durationMins);
+  }, [commuteAnalysis, durationMins]);
+
+  // Synchronize default selected mode with the top recommended mode
+  useEffect(() => {
+    if (multiModalAnalysis?.bestMode?.id) {
+      setSelectedModeId(multiModalAnalysis.bestMode.id);
+    }
+  }, [multiModalAnalysis?.bestMode?.id]);
+
+  const activeMode = useMemo(() => {
+    if (!multiModalAnalysis) return null;
+    return (
+      multiModalAnalysis.modes.find((m) => m.id === selectedModeId) ||
+      multiModalAnalysis.bestMode ||
+      multiModalAnalysis.modes[0]
+    );
+  }, [multiModalAnalysis, selectedModeId]);
 
   if (!currentWeather || !currentWeather.hourly) return null;
 
@@ -825,6 +894,222 @@ export default function SmartCommute() {
                         </button>
                       );
                     })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Multi-Modal Transit Guidance Section */}
+            {multiModalAnalysis && (
+              <div className="transit-modes-container">
+                <div className="transit-modes-header">
+                  <div className="transit-modes-title">
+                    <Navigation size={18} color="var(--theme-accent)" />
+                    <span>Multi-Modal Transit Guidance</span>
+                  </div>
+                  {multiModalAnalysis.bestMode && (
+                    <div className="transit-best-pill">
+                      <Sparkles size={13} color="#10b981" />
+                      <span>
+                        Recommended: {multiModalAnalysis.bestMode.name} ({multiModalAnalysis.bestMode.score}/100)
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 5 Modes Selection Grid */}
+                <div className="transit-mode-grid">
+                  {multiModalAnalysis.modes.map((mode) => {
+                    const isSelected = selectedModeId === mode.id;
+                    const isBest = mode.id === multiModalAnalysis.bestMode?.id;
+                    return (
+                      <button
+                        key={mode.id}
+                        type="button"
+                        className={`transit-mode-card ${isSelected ? 'active' : ''}`}
+                        onClick={() => setSelectedModeId(mode.id)}
+                      >
+                        <div className="transit-mode-top">
+                          <div className="transit-mode-icon-box">
+                            {renderTransitIcon(mode.icon, isSelected ? 'var(--theme-accent)' : '#94a3b8')}
+                          </div>
+                          {isBest && <span className="transit-mode-crown">Top Pick</span>}
+                        </div>
+
+                        <div>
+                          <div className="transit-mode-name">{mode.name}</div>
+                          <div className="transit-mode-category">{mode.category}</div>
+                        </div>
+
+                        <div className="transit-mode-bottom">
+                          <span className="transit-mode-score-num" style={{ color: mode.rating.color }}>
+                            {mode.score}
+                            <span style={{ fontSize: '0.65rem', opacity: 0.65 }}>/100</span>
+                          </span>
+                          <span
+                            className="transit-mode-status-tag"
+                            style={{
+                              background: `${mode.rating.color}22`,
+                              color: mode.rating.color,
+                              border: `1px solid ${mode.rating.color}44`,
+                            }}
+                          >
+                            {mode.rating.status}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Selected Mode Deep-Dive Detail */}
+                {activeMode && (
+                  <div className="transit-deepdive-panel">
+                    <div className="transit-verdict-banner">
+                      <div
+                        style={{
+                          padding: '0.55rem',
+                          borderRadius: '12px',
+                          background: `${activeMode.rating.color}20`,
+                          border: `1px solid ${activeMode.rating.color}40`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {renderTransitIcon(activeMode.icon, activeMode.rating.color, 24)}
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 800, fontSize: '0.96rem', color: '#ffffff' }}>
+                            {activeMode.name} Weather Safety Assessment
+                          </span>
+                          <span
+                            className="transit-mode-status-tag"
+                            style={{
+                              background: `${activeMode.rating.color}22`,
+                              color: activeMode.rating.color,
+                              border: `1px solid ${activeMode.rating.color}55`,
+                              fontSize: '0.72rem',
+                            }}
+                          >
+                            {activeMode.rating.label} • {activeMode.score}/100
+                          </span>
+                        </div>
+                        <p>{activeMode.verdict}</p>
+                      </div>
+                    </div>
+
+                    {/* Mode Metrics: Est Duration, Delay Note, Comfort, Road Traction */}
+                    <div className="transit-metrics-row">
+                      <div className="transit-submetric">
+                        <span className="transit-submetric-label">Est. Travel Time</span>
+                        <span className="transit-submetric-value">{activeMode.travelTimeEst} mins</span>
+                      </div>
+
+                      <div className="transit-submetric">
+                        <span className="transit-submetric-label">Weather Delay</span>
+                        <span className="transit-submetric-value" style={{ fontSize: '0.82rem' }}>
+                          {activeMode.delayNote}
+                        </span>
+                      </div>
+
+                      <div className="transit-submetric">
+                        <span className="transit-submetric-label">Cabin / Rider Comfort</span>
+                        <span className="transit-submetric-value" style={{ fontSize: '0.82rem' }}>
+                          {activeMode.comfortLevel}
+                        </span>
+                      </div>
+
+                      <div className="transit-submetric">
+                        <span className="transit-submetric-label">Road Grip & Traction</span>
+                        <span className="transit-submetric-value" style={{ fontSize: '0.82rem' }}>
+                          {activeMode.roadTraction}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Precautions & Gear Checklist */}
+                    <div className="transit-precautions-container">
+                      <div className="transit-rules-box">
+                        <div className="transit-box-title">
+                          <ShieldCheck size={15} color="var(--theme-accent)" />
+                          <span>Safety Protocols & Precautions</span>
+                        </div>
+                        <ul className="transit-bullet-list">
+                          {activeMode.precautions.map((p, idx) => (
+                            <li key={idx}>{p}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="transit-rules-box">
+                        <div className="transit-box-title">
+                          <Sparkles size={15} color="#f59e0b" />
+                          <span>Recommended Gear Checklist</span>
+                        </div>
+                        <div className="transit-gear-chips">
+                          {activeMode.gearChecklist.map((g, idx) => (
+                            <span key={idx} className="transit-gear-chip">
+                              <Check size={12} color="#38bdf8" />
+                              <span>{g}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Expandable Comparison Matrix */}
+                    <button
+                      type="button"
+                      className="transit-compare-btn"
+                      onClick={() => setShowComparisonTable((prev) => !prev)}
+                    >
+                      {showComparisonTable ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                      <span>
+                        {showComparisonTable ? 'Hide Cross-Mode Comparison' : 'Compare All 5 Modes Side-by-Side'}
+                      </span>
+                    </button>
+
+                    {showComparisonTable && (
+                      <div className="transit-compare-table-wrapper">
+                        <table className="transit-compare-table">
+                          <thead>
+                            <tr>
+                              <th>Transit Mode</th>
+                              <th>Safety Score</th>
+                              <th>Est. Time</th>
+                              <th>Comfort</th>
+                              <th>Weather Verdict</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {multiModalAnalysis.modes.map((m) => (
+                              <tr
+                                key={m.id}
+                                style={{
+                                  background: m.id === selectedModeId ? 'rgba(56, 189, 248, 0.08)' : 'transparent',
+                                }}
+                              >
+                                <td style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                                  {renderTransitIcon(m.icon, m.rating.color, 16)}
+                                  <span>{m.name}</span>
+                                </td>
+                                <td>
+                                  <span style={{ color: m.rating.color, fontWeight: 700 }}>
+                                    {m.score}/100 ({m.rating.status})
+                                  </span>
+                                </td>
+                                <td>{m.travelTimeEst}m</td>
+                                <td>{m.comfortLevel}</td>
+                                <td style={{ fontSize: '0.76rem', color: '#cbd5e1' }}>{m.verdict}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
