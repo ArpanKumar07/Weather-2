@@ -9,12 +9,14 @@ import {
   LogOut,
   Sparkles,
   AlertTriangle,
+  Menu,
 } from 'lucide-react';
 import { useWeather } from '../context/WeatherContext';
 import { useAuth } from '../context/AuthContext';
 import { searchCities } from '../services/api';
 import { analyzeWeatherHazards } from '../utils/catastrophicAlerts';
 import CatastrophicAlertModal from './CatastrophicAlertModal';
+import SideDrawer from './SideDrawer';
 
 export default function Navbar() {
   const {
@@ -32,6 +34,7 @@ export default function Navbar() {
   const [suggestions, setSuggestions] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const searchRef = useRef(null);
 
   // Analyze hazards for current weather telemetry
@@ -93,17 +96,39 @@ export default function Navbar() {
     <>
       <header className="navbar">
         <div className="nav-wrapper">
-          {/* Brand */}
-          <div
-            className="brand"
-            onClick={() => loadWeather(22.5726, 88.3639, 'Kolkata', 'IN')}
-          >
-            <div className="brand-logo-glow">
-              <Compass size={24} />
-            </div>
-            <div>
-              <div className="brand-title">MAUSAM360</div>
-              <div className="brand-subtitle">Weather Aware Planner</div>
+          {/* Left: Hamburger Menu Button & Brand */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button
+              type="button"
+              className="btn-icon"
+              onClick={() => setIsDrawerOpen(true)}
+              aria-label="Open Navigation Menu"
+              title="Open Menu"
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: 'var(--radius-sm)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Menu size={20} />
+            </button>
+
+            {/* Brand */}
+            <div
+              className="brand"
+              onClick={() => loadWeather(22.5726, 88.3639, 'Kolkata', 'IN')}
+            >
+              <div className="brand-logo-glow">
+                <Compass size={24} />
+              </div>
+              <div>
+                <div className="brand-title">MAUSAM360</div>
+                <div className="brand-subtitle">Weather Aware Planner</div>
+              </div>
             </div>
           </div>
 
@@ -227,6 +252,9 @@ export default function Navbar() {
           </div>
         </div>
       </header>
+
+      {/* Left-Side Navigation Drawer */}
+      <SideDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
 
       {/* Catastrophic Hazard & Relief Center Modal */}
       <CatastrophicAlertModal

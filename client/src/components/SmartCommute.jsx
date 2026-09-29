@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Navigation,
   MapPin,
@@ -15,15 +15,154 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useWeather } from '../context/WeatherContext';
-import { analyzeCommute, findBestDepartureTime } from '../utils/commuteScore';
+import { getCurrentWeather, searchPlaces } from '../services/api';
+import {
+  analyzeCommute,
+  findBestDepartureTime,
+} from '../utils/commuteScore';
+
+const MAX_SUGGESTIONS = 5;
+const SEARCH_DELAY = 300;
+
+const getPlaceSecondaryText = (place) => {
+  const parts = [place.city, place.state, place.country].filter(Boolean);
+  return parts.join(', ');
+};
+
+function PlaceSuggestions({
+  suggestions,
+  visible,
+  loading,
+  query,
+  onSelect,
+  accentColor,
+}) {
+  if (!visible || (!loading && suggestions.length === 0)) {
+    return null;
+  }
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: 'calc(100% + 0.35rem)',
+        left: 0,
+        right: 0,
+        zIndex: 50,
+        background: 'rgba(15, 23, 42, 0.98)',
+        border: '1px solid var(--card-border)',
+        borderRadius: 'var(--radius-sm)',
+        boxShadow: '0 18px 40px rgba(0, 0, 0, 0.28)',
+        overflow: 'hidden',
+        backdropFilter: 'blur(14px)',
+      }}
+    >
+      {loading ? (
+        <div
+          style={{
+            padding: '0.75rem 0.9rem',
+            fontSize: '0.78rem',
+            color: 'var(--text-muted)',
+          }}
+        >
+          Searching places…
+        </div>
+      ) : (
+        suggestions.slice(0, MAX_SUGGESTIONS).map((place) => (
+          <button
+            key={place.id}
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => onSelect(place)}
+            style={{
+              width: '100%',
+              border: 0,
+              borderBottom: '1px solid rgba(148, 163, 184, 0.08)',
+              background: 'transparent',
+              color: 'var(--text-main)',
+              textAlign: 'left',
+              padding: '0.72rem 0.85rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '0.65rem',
+            }}
+          >
+            <MapPin
+              size={15}
+              color={accentColor}
+              style={{ flexShrink: 0, marginTop: '2px' }}
+            />
+
+            <span style={{ minWidth: 0 }}>
+              <span
+                style={{
+                  display: 'block',
+                  fontSize: '0.82rem',
+                  fontWeight: 650,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {place.name}
+              </span>
+
+              <span
+                style={{
+                  display: 'block',
+                  marginTop: '0.12rem',
+                  fontSize: '0.7rem',
+                  color: 'var(--text-muted)',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {getPlaceSecondaryText(place) || place.displayName}
+              </span>
+            </span>
+          </button>
+        ))
+      )}
+
+      {!loading && query && suggestions.length === 0 && (
+        <div
+          style={{
+            padding: '0.75rem 0.9rem',
+            fontSize: '0.78rem',
+            color: 'var(--text-muted)',
+          }}
+        >
+          No matching places found.
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function SmartCommute() {
   const { currentWeather, convertTemp } = useWeather();
 
-  // Inputs
+  // Search text + selected real place
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
-  
+  const [originPlace, setOriginPlace] = useState(null);
+  const [destinationPlace, setDestinationPlace] = useState(null);
+
+  // Autocomplete state
+  const [originSuggestions, setOriginSuggestions] = useState([]);
+  const [destinationSuggestions, setDestinationSuggestions] = useState([]);
+  const [originFocused, setOriginFocused] = useState(false);
+  const [destinationFocused, setDestinationFocused] = useState(false);
+  const [originSearching, setOriginSearching] = useState(false);
+  const [destinationSearching, setDestinationSearching] = useState(false);
+
+  // Weather for selected places only
+  const [originWeather, setOriginWeather] = useState(null);
+  const [destinationWeather, setDestinationWeather] = useState(null);
+  const [locationError, setLocationError] = useState('');
+
   // Format current local time HH:mm as default
   const defaultTimeStr = useMemo(() => {
     const now = new Date();
@@ -43,26 +182,205 @@ export default function SmartCommute() {
     return d;
   }, [timeInput]);
 
-  // City display fallbacks
-  const originDisplay = origin.trim() || currentWeather?.city_name || 'Origin';
-  const destinationDisplay = destination.trim() || 'Destination';
+  // Search origin places as user types
+  useEffect(() => {
+    let cancelled = false;
 
-  // Commute Analysis
+    const query = origin.trim();
+
+    if (!originFocused || query.length < 2 || originPlace?.displayName === query) {
+      setOriginSuggestions([]);
+      setOriginSearching(false);
+      return undefined;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setOriginSearching(true);
+
+        const places = await searchPlaces(query, {
+          lat: currentWeather?.latitude,
+          lon: currentWeather?.longitude,
+        });
+
+        if (!cancelled) {
+          setOriginSuggestions(places.slice(0, MAX_SUGGESTIONS));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Origin place search failed:', error);
+          setOriginSuggestions([]);
+        }
+      } finally {
+        if (!cancelled) setOriginSearching(false);
+      }
+    }, SEARCH_DELAY);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [origin, originFocused, originPlace, currentWeather]);
+
+  // Search destination places as user types
+  useEffect(() => {
+    let cancelled = false;
+
+    const query = destination.trim();
+
+    if (
+      !destinationFocused ||
+      query.length < 2 ||
+      destinationPlace?.displayName === query
+    ) {
+      setDestinationSuggestions([]);
+      setDestinationSearching(false);
+      return undefined;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setDestinationSearching(true);
+
+        const places = await searchPlaces(query, {
+          lat: currentWeather?.latitude,
+          lon: currentWeather?.longitude,
+        });
+
+        if (!cancelled) {
+          setDestinationSuggestions(places.slice(0, MAX_SUGGESTIONS));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Destination place search failed:', error);
+          setDestinationSuggestions([]);
+        }
+      } finally {
+        if (!cancelled) setDestinationSearching(false);
+      }
+    }, SEARCH_DELAY);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [destination, destinationFocused, destinationPlace, currentWeather]);
+
+  // Fetch weather only after the user selects an actual place
+  const loadPlaceWeather = async (place, setter) => {
+    try {
+      setLocationError('');
+
+      const weather = await getCurrentWeather(
+        place.latitude,
+        place.longitude,
+        place.name,
+        place.countryCode
+      );
+
+      setter(weather);
+    } catch (error) {
+      console.error('Selected place weather error:', error);
+      setter(null);
+      setLocationError(
+        `Could not load weather for ${place.name}. Please select the place again.`
+      );
+    }
+  };
+
+  const handleOriginSelect = (place) => {
+    setOrigin(place.displayName);
+    setOriginPlace(place);
+    setOriginSuggestions([]);
+    setOriginFocused(false);
+    setOriginWeather(null);
+    loadPlaceWeather(place, setOriginWeather);
+  };
+
+  const handleDestinationSelect = (place) => {
+    setDestination(place.displayName);
+    setDestinationPlace(place);
+    setDestinationSuggestions([]);
+    setDestinationFocused(false);
+    setDestinationWeather(null);
+    loadPlaceWeather(place, setDestinationWeather);
+  };
+
+  const handleOriginChange = (value) => {
+    setOrigin(value);
+    setOriginPlace(null);
+    setOriginWeather(null);
+    setOriginSuggestions([]);
+    setLocationError('');
+  };
+
+  const handleDestinationChange = (value) => {
+    setDestination(value);
+    setDestinationPlace(null);
+    setDestinationWeather(null);
+    setDestinationSuggestions([]);
+    setLocationError('');
+  };
+  // Display selected place names
+  const originDisplay = originPlace?.name || 'Origin';
+  const destinationDisplay = destinationPlace?.name || 'Destination';
+
+  // Calculate only after BOTH real places have been selected and weather loaded
   const commuteAnalysis = useMemo(() => {
-    if (!currentWeather || !currentWeather.hourly) return null;
-    return analyzeCommute(currentWeather.hourly, departureDate, durationMins);
-  }, [currentWeather, departureDate, durationMins]);
+    if (
+      !originPlace ||
+      !destinationPlace ||
+      !originWeather?.hourly ||
+      !destinationWeather?.hourly
+    ) {
+      return null;
+    }
 
-  // Optimal Departure Recommendation (Feature 4)
+    return analyzeCommute(
+      originWeather.hourly,
+      destinationWeather.hourly,
+      departureDate,
+      durationMins
+    );
+  }, [
+    originPlace,
+    destinationPlace,
+    originWeather,
+    destinationWeather,
+    departureDate,
+    durationMins,
+  ]);
+
+  // Optimal Departure Recommendation
   const departureRecommendation = useMemo(() => {
-    if (!currentWeather || !currentWeather.hourly) return null;
-    return findBestDepartureTime(currentWeather.hourly, departureDate, durationMins);
-  }, [currentWeather, departureDate, durationMins]);
+    if (
+      !originPlace ||
+      !destinationPlace ||
+      !originWeather?.hourly ||
+      !destinationWeather?.hourly
+    ) {
+      return null;
+    }
+
+    return findBestDepartureTime(
+      originWeather.hourly,
+      destinationWeather.hourly,
+      departureDate,
+      durationMins
+    );
+  }, [
+    originPlace,
+    destinationPlace,
+    originWeather,
+    destinationWeather,
+    departureDate,
+    durationMins,
+  ]);
 
   if (!currentWeather || !currentWeather.hourly) return null;
 
   return (
-    <div style={{ marginBottom: '2rem' }}>
+    <div id="smart-commute" style={{ marginBottom: '2.5rem', scrollMarginTop: '80px' }}>
       <div className="card-glass">
         {/* Title Row */}
         <div className="section-title-row" style={{ marginBottom: '1.25rem' }}>
@@ -105,7 +423,7 @@ export default function SmartCommute() {
           }}
         >
           {/* Origin */}
-          <div className="form-group">
+          <div className="form-group" style={{ position: 'relative' }}>
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <MapPin size={13} color="var(--theme-accent)" />
               <span>Origin</span>
@@ -113,14 +431,26 @@ export default function SmartCommute() {
             <input
               type="text"
               className="form-input"
-              placeholder={currentWeather.city_name || 'Enter origin...'}
+              placeholder="Search a real place..."
               value={origin}
-              onChange={(e) => setOrigin(e.target.value)}
+              onFocus={() => setOriginFocused(true)}
+              onChange={(e) => handleOriginChange(e.target.value)}
+              onBlur={() => setTimeout(() => setOriginFocused(false), 150)}
+              autoComplete="off"
+            />
+
+            <PlaceSuggestions
+              suggestions={originSuggestions}
+              visible={originFocused && origin.trim().length >= 2}
+              loading={originSearching}
+              query={origin}
+              onSelect={handleOriginSelect}
+              accentColor="var(--theme-accent)"
             />
           </div>
 
           {/* Destination */}
-          <div className="form-group">
+          <div className="form-group" style={{ position: 'relative' }}>
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <MapPin size={13} color="#f59e0b" />
               <span>Destination</span>
@@ -128,9 +458,21 @@ export default function SmartCommute() {
             <input
               type="text"
               className="form-input"
-              placeholder="e.g. Office / Downtown"
+              placeholder="Search a real place..."
               value={destination}
-              onChange={(e) => setDestination(e.target.value)}
+              onFocus={() => setDestinationFocused(true)}
+              onChange={(e) => handleDestinationChange(e.target.value)}
+              onBlur={() => setTimeout(() => setDestinationFocused(false), 150)}
+              autoComplete="off"
+            />
+
+            <PlaceSuggestions
+              suggestions={destinationSuggestions}
+              visible={destinationFocused && destination.trim().length >= 2}
+              loading={destinationSearching}
+              query={destination}
+              onSelect={handleDestinationSelect}
+              accentColor="#f59e0b"
             />
           </div>
 
@@ -183,6 +525,29 @@ export default function SmartCommute() {
             </div>
           </div>
         </div>
+
+        {/* Loading / selection state */}
+        {(originPlace || destinationPlace || locationError) &&
+          (!commuteAnalysis || !commuteAnalysis.available) && (
+            <div
+              style={{
+                padding: '0.85rem 1.1rem',
+                borderRadius: 'var(--radius-md)',
+                background: 'rgba(15, 23, 42, 0.35)',
+                border: '1px solid var(--card-border)',
+                marginBottom: '1rem',
+                fontSize: '0.82rem',
+                color: locationError ? '#fbbf24' : 'var(--text-muted)',
+              }}
+            >
+              {locationError ||
+                (!originPlace
+                  ? 'Select an origin from the suggestions to begin.'
+                  : !destinationPlace
+                  ? 'Now select a destination from the suggestions to calculate the commute.'
+                  : 'Loading weather for the selected places...')}
+            </div>
+          )}
 
         {/* Results Section */}
         {commuteAnalysis && commuteAnalysis.available && (
@@ -317,7 +682,7 @@ export default function SmartCommute() {
               </div>
             </div>
 
-            {/* Weather Shift Alert (if any detected) */}
+            {/* Weather Shift Alert */}
             {commuteAnalysis.weatherShift && (
               <div
                 style={{

@@ -31,6 +31,69 @@ export async function searchCities(query) {
   return res.json();
 }
 
+
+export async function searchPlaces(query, { lat, lon } = {}) {
+  if (!query || query.trim().length < 2) return [];
+
+  const params = new URLSearchParams({
+    q: query.trim(),
+    limit: '6',
+    lang: 'en',
+  });
+
+  // Bias results toward the user's current weather location when available.
+  if (Number.isFinite(Number(lat)) && Number.isFinite(Number(lon))) {
+    params.append('lat', lat);
+    params.append('lon', lon);
+    params.append('location_bias_scale', '0.2');
+  }
+
+  try {
+    const res = await fetch(
+      `https://photon.komoot.io/api/?${params.toString()}`
+    );
+
+    if (!res.ok) return [];
+
+    const data = await res.json();
+
+    return (data.features || []).map((feature, index) => {
+      const properties = feature.properties || {};
+      const coordinates = feature.geometry?.coordinates || [];
+      const longitude = Number(coordinates[0]);
+      const latitude = Number(coordinates[1]);
+
+      const name = properties.name || properties.street || properties.city || 'Unknown place';
+      const city = properties.city || properties.district || properties.county || '';
+      const state = properties.state || '';
+      const country = properties.country || '';
+      const countryCode = (properties.countrycode || '').toUpperCase();
+
+      return {
+        id: `${properties.osm_type || 'place'}-${properties.osm_id || index}-${latitude}-${longitude}`,
+        name,
+        city,
+        state,
+        country,
+        countryCode,
+        latitude,
+        longitude,
+        displayName: [
+          name,
+          city && city !== name ? city : '',
+          state && state !== city ? state : '',
+          country && country !== state ? country : '',
+        ]
+          .filter(Boolean)
+          .join(', '),
+      };
+    }).filter((place) => Number.isFinite(place.latitude) && Number.isFinite(place.longitude));
+  } catch (error) {
+    console.warn('Place search error:', error.message);
+    return [];
+  }
+}
+
 export async function getWeatherHistory(locationId, durationHours = 24) {
   const res = await fetch(`${API_BASE}/weather/history?location_id=${locationId}&duration_hours=${durationHours}`);
   if (!res.ok) {
