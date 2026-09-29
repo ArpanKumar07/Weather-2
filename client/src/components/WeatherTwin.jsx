@@ -74,12 +74,36 @@ function scoreWeather(weather, type) {
   return score;
 }
 
+function getActivityWindow(activity = '', currentMinutes) {
+  const text = activity.toLowerCase();
+
+  // Suggestions should stay realistic for the activity. In particular,
+  // meals should never be moved to unreasonable hours such as 5 AM.
+  if (/lunch|luncheon/.test(text)) return [11 * 60, 14 * 60 + 30];
+  if (/breakfast/.test(text)) return [6 * 60, 10 * 60 + 30];
+  if (/dinner|supper/.test(text)) return [18 * 60, 21 * 60 + 30];
+  if (/sleep|bed/.test(text)) return [21 * 60, 24 * 60];
+  if (/college|school|class|lecture|lab|office|work/.test(text)) return [7 * 60, 19 * 60];
+  if (/cricket|football|soccer|tennis|run|running|jog|walk|walking|cycling|bike|gym|exercise|workout|sport/.test(text)) {
+    // Keep outdoor activities in normal active hours.
+    return [6 * 60, 21 * 60];
+  }
+  if (/travel|commute|return|drive|ride|bus|metro/.test(text)) return [6 * 60, 23 * 60];
+
+  // For a generic activity, stay close to the original time rather than
+  // proposing a completely different part of the day.
+  return [Math.max(0, currentMinutes - 180), Math.min(23 * 60 + 30, currentMinutes + 180)];
+}
+
 function findBetterTime(hourly, currentTime, activity) {
-  if (!hourly?.length) return null;
+  if (!hourly?.length || !currentTime) return null;
+
   const type = activityType(activity);
   const current = Number(currentTime.slice(0, 2)) * 60 + Number(currentTime.slice(3, 5));
   const currentWeather = getWeatherForTime(hourly, currentTime);
+  if (!currentWeather) return null;
   const currentScore = scoreWeather(currentWeather, type);
+  const [windowStart, windowEnd] = getActivityWindow(activity, current);
 
   const options = hourly
     .filter((item) => item?.time)
@@ -91,12 +115,18 @@ function findBetterTime(hourly, currentTime, activity) {
       return { item, minutes, distance, score: scoreWeather(item, type) };
     })
     .filter(Boolean)
-    .filter((item) => item.distance >= 30 && item.score + 8 < currentScore)
+    .filter((item) => item.minutes >= windowStart && item.minutes <= windowEnd)
+    // Keep recommendations practical: don't move an activity more than
+    // three hours unless there is no reasonable nearby alternative.
+    .filter((item) => item.distance >= 45 && item.distance <= 180)
+    .filter((item) => item.score + 12 < currentScore)
     .sort((a, b) => (a.score - b.score) || (a.distance - b.distance));
 
   if (!options.length) return null;
+
   const best = options[0];
-  return `${formatTime12(`${String(Math.floor(best.minutes / 60)).padStart(2, '0')}:${String(best.minutes % 60).padStart(2, '0')}`)}`;
+  const bestTime = `${String(Math.floor(best.minutes / 60)).padStart(2, '0')}:${String(best.minutes % 60).padStart(2, '0')}`;
+  return formatTime12(bestTime);
 }
 
 function TimePicker({ value, onChange }) {
@@ -137,12 +167,16 @@ export default function WeatherTwin() {
 
   const simulation = useMemo(() => plan.map((entry) => {
     const weather = getWeatherForTime(currentWeather?.hourly, entry.time);
+    const warning = getWarning(weather, entry.activity);
     return {
       ...entry,
       weather,
-      warning: getWarning(weather, entry.activity),
-      betterTime: getWarning(weather, entry.activity) ? findBetterTime(currentWeather?.hourly, entry.time, entry.activity) : null,
+      warning,
+      betterTime: warning ? findBetterTime(currentWeather?.hourly, entry.time, entry.activity) : null,
     };
+  }).sort((a, b) => {
+    const toMinutes = (time) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+    return toMinutes(a.time) - toMinutes(b.time);
   }), [plan, currentWeather?.hourly]);
 
   const updatePlan = (index, field, value) => {
