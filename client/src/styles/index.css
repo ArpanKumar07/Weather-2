@@ -2080,3 +2080,252 @@ button, input, select {
 }
 
 
+
+/* -------------------------------------------------------------
+   Weather Twin - Digital Twin of Your Day (Additive Feature)
+   Existing dashboard styles are intentionally untouched.
+   ------------------------------------------------------------- */
+.weather-twin {
+  margin-bottom: 2.5rem;
+}
+
+.weather-twin-heading {
+  margin-bottom: 1.15rem;
+}
+
+.weather-twin-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+  max-width: 760px;
+}
+
+.weather-twin-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(420px, 1.7fr);
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+.weather-twin-planner,
+.weather-twin-result {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(14px);
+}
+
+.weather-twin-planner {
+  padding: 1.15rem;
+}
+
+.weather-twin-plan-header,
+.weather-twin-result-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.weather-twin-plan-header > span,
+.weather-twin-result-top > span {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-main);
+}
+
+.weather-twin-add,
+.weather-twin-copy,
+.weather-twin-delete {
+  border: 1px solid var(--card-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.weather-twin-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0.4rem 0.65rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.weather-twin-add:hover,
+.weather-twin-copy:hover,
+.weather-twin-delete:hover {
+  color: var(--theme-accent);
+  border-color: var(--theme-accent);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.weather-twin-input-row {
+  display: grid;
+  grid-template-columns: 92px 1fr 30px;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.weather-twin-input-row input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--text-main);
+  padding: 0.58rem 0.65rem;
+  outline: none;
+  font-size: 0.78rem;
+}
+
+.weather-twin-input-row input:focus {
+  border-color: var(--theme-accent);
+  box-shadow: 0 0 0 2px var(--theme-accent-glow);
+}
+
+.weather-twin-delete {
+  width: 30px;
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+}
+
+.weather-twin-result {
+  padding: 1.15rem 1.25rem;
+  background: rgba(30, 30, 30, 0.72);
+}
+
+[data-mode="light"] .weather-twin-result {
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.weather-twin-result-top {
+  margin-bottom: 1.1rem;
+}
+
+.weather-twin-copy {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+}
+
+.weather-twin-timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.weather-twin-row {
+  display: grid;
+  grid-template-columns: 55px 25px minmax(80px, 1fr) auto auto auto;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 28px;
+  font-family: monospace;
+  font-size: 0.82rem;
+}
+
+.weather-twin-time,
+.weather-twin-temp {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.weather-twin-activity {
+  color: var(--text-main);
+}
+
+.weather-twin-dot {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+
+.weather-twin-dot.good {
+  background: #5eead4;
+  color: #064e3b;
+}
+
+.weather-twin-dot.warn {
+  background: #fbbf24;
+  color: #78350f;
+}
+
+.weather-twin-dot.bad {
+  background: #fb7185;
+  color: #881337;
+}
+
+.weather-twin-rain {
+  color: #60a5fa;
+}
+
+.weather-twin-uv {
+  color: #fbbf24;
+}
+
+.weather-twin-arrow {
+  height: 12px;
+  display: flex;
+  align-items: center;
+  padding-left: 63px;
+  color: var(--text-muted);
+}
+
+.weather-twin-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--card-border);
+  font-family: monospace;
+  font-size: 0.78rem;
+}
+
+.weather-twin-notice.good {
+  color: #6ee7b7;
+}
+
+.weather-twin-notice.warning {
+  color: #fbbf24;
+}
+
+.weather-twin-copied {
+  margin-top: 0.55rem;
+  text-align: right;
+  color: var(--theme-accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .weather-twin-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .weather-twin-row {
+    grid-template-columns: 50px 22px minmax(70px, 1fr) auto;
+  }
+
+  .weather-twin-rain,
+  .weather-twin-uv {
+    display: none;
+  }
+
+  .weather-twin-arrow {
+    padding-left: 57px;
+  }
+}
