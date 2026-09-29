@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Brain, Copy, Plus, Trash2, ArrowDown, Sun, CloudRain, Wind, AlertTriangle } from 'lucide-react';
 import { useWeather } from '../context/WeatherContext';
+import PlanMyDay from './PlanMyDay';
 
 const DEFAULT_PLAN = [
   { time: '08:00', activity: 'College' },
@@ -97,6 +98,7 @@ export default function WeatherTwin() {
             Enter your plan and MAUSAM360 simulates the weather you are likely to experience throughout the day.
           </div>
         </div>
+        <PlanMyDay />
       </div>
 
       <div className="weather-twin-layout">
