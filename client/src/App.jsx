@@ -11,6 +11,7 @@ import SmartCommute from './components/SmartCommute';
 import DailyForecast from './components/DailyForecast';
 import LiveRadar from './components/LiveRadar';
 import ActivityPlanner from './components/ActivityPlanner';
+import WeatherTwin from './components/WeatherTwin';
 import CityLandmark from './components/CityLandmark';
 import WeatherEffects from './components/WeatherEffects';
 import AuthModal from './components/AuthModal';
@@ -101,6 +102,9 @@ function MainDashboard() {
 
             {/* City-Aware Activity Planner (Feature 7) */}
             <ActivityPlanner />
+
+            {/* Digital Twin of Your Day */}
+            <WeatherTwin />
           </>
         )}
       </main>
