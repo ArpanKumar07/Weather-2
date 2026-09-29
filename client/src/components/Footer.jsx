@@ -12,7 +12,7 @@ export default function Footer() {
         <div>
           <div style={{ fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span>MAUSAM360</span>
-            <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>v1.0 (Release 1)</span>
+            <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>v2.0 (Release 2)</span>
           </div>
           <div className="footer-meta" style={{ marginTop: '0.2rem' }}>
             Team <strong>INFINITE LOOP (G2-T2)</strong> • Project ID: G2-12 • DSC3153 Software Development Lab
