@@ -167,3 +167,43 @@ export async function removeFavorite(locationId, token) {
   if (!res.ok) throw new Error(data.error || 'Failed to remove favorite');
   return data;
 }
+export async function createActivity(activity, token) {
+  const res = await fetch(`${API_BASE}/activities`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(activity),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || data.error || 'Failed to schedule activity');
+  }
+
+  return data;
+}
+
+export async function suggestAndMoveActivity(activityId, token) {
+  const res = await fetch(
+    `${API_BASE}/activities/${activityId}/reschedule`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(
+      data.message || data.error || 'Failed to reschedule activity'
+    );
+  }
+
+  return data;
+}
