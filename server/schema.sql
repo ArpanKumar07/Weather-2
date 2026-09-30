@@ -45,3 +45,18 @@ CREATE TABLE IF NOT EXISTS favourite_locations (
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (location_id) REFERENCES locations(location_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+--5.
+CREATE TABLE IF NOT EXISTS activities (
+    activity_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    activity_type VARCHAR(100) NOT NULL,
+    scheduled_at DATETIME NOT NULL,
+    indoor BOOLEAN NOT NULL DEFAULT FALSE,
+    latitude DECIMAL(9, 6) NOT NULL,
+    longitude DECIMAL(9, 6) NOT NULL,
+    city_name VARCHAR(100),
+    status VARCHAR(20) NOT NULL DEFAULT 'planned',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
