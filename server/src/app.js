@@ -1,3 +1,4 @@
+import activityRoutes from './routes/activityRoutes.js';
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
@@ -39,11 +40,13 @@ app.use('/api/auth', authRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/activities', activityRoutes);
 
 app.use('/auth', authRoutes);
 app.use('/weather', weatherRoutes);
 app.use('/users', userRoutes);
 app.use('/chat', chatRoutes);
+app.use('/api/activities', activityRoutes);
 
 // 404 Handler
 app.use((req, res) => {
