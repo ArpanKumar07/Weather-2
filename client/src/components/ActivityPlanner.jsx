@@ -16,11 +16,79 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useWeather } from '../context/WeatherContext';
+import { createActivity, suggestAndMoveActivity } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function ActivityPlanner() {
   const { currentWeather } = useWeather();
   const { ageGroup } = getChatbotPreferences();
-  const [filter, setFilter] = useState('all'); // 'all' | 'outdoor' | 'indoor' | 'at_risk'
+  const { token, isAuthenticated, openAuthModal } = useAuth();
+
+  const [filter, setFilter] = useState('all');
+  const [scheduledActivities, setScheduledActivities] = useState({});
+  const [movingActivity, setMovingActivity] = useState(null);
+  const handleSchedule = async (item) => {
+  if (!isAuthenticated) {
+    openAuthModal();
+    return;
+  }
+
+  try {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(16, 0, 0, 0);
+
+    const result = await createActivity(
+      {
+        title: item.title,
+        activity_type: item.category,
+        scheduled_at: tomorrow.toISOString(),
+        indoor: Boolean(item.indoor),
+        latitude: currentWeather.latitude,
+        longitude: currentWeather.longitude,
+        city_name: city,
+      },
+      token
+    );
+
+    setScheduledActivities((prev) => ({
+      ...prev,
+      [item.id]: result.activity,
+    }));
+
+    alert('Activity scheduled for tomorrow at 4:00 PM.');
+  } catch (err) {
+    alert(err.message);
+  }
+};
+
+const handleSuggestAndMove = async (item) => {
+  const activity = scheduledActivities[item.id];
+
+  if (!activity) return;
+
+  try {
+    setMovingActivity(item.id);
+
+    const result = await suggestAndMoveActivity(
+      activity.activity_id,
+      token
+    );
+
+    setScheduledActivities((prev) => ({
+      ...prev,
+      [item.id]: result.activity,
+    }));
+
+    alert(
+      `Activity moved successfully!\nNew time: ${result.new_time}\nRain probability: ${result.rain_probability}%`
+    );
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    setMovingActivity(null);
+  }
+};
 
   if (!currentWeather || !currentWeather.activities) return null;
 
@@ -169,6 +237,35 @@ export default function ActivityPlanner() {
                 </div>
                 <div>{item.rationale}</div>
               </div>
+              <div
+  style={{
+    display: 'flex',
+    gap: '8px',
+    marginTop: '10px',
+    flexWrap: 'wrap',
+  }}
+>
+  {!scheduledActivities[item.id] ? (
+    <button
+      type="button"
+      className="activity-filter-btn"
+      onClick={() => handleSchedule(item)}
+    >
+      Schedule for Tomorrow
+    </button>
+  ) : (
+    <button
+      type="button"
+      className="activity-filter-btn at-risk-btn"
+      onClick={() => handleSuggestAndMove(item)}
+      disabled={movingActivity === item.id}
+    >
+      {movingActivity === item.id
+        ? 'Finding good weather...'
+        : 'Suggest & Move'}
+    </button>
+  )}
+</div>
             </div>
           );
         })}
