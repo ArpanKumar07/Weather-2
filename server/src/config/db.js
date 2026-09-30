@@ -96,6 +96,29 @@ export const db = {
         FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
         FOREIGN KEY (location_id) REFERENCES locations(location_id) ON DELETE CASCADE
       );
+            CREATE TABLE IF NOT EXISTS activities (
+        activity_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        activity_type TEXT NOT NULL,
+        scheduled_at TEXT NOT NULL,
+        indoor INTEGER NOT NULL DEFAULT 0,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        city_name TEXT,
+        status TEXT NOT NULL DEFAULT 'planned',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS activity_alerts (
+        alert_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        activity_id INTEGER NOT NULL,
+        rain_probability INTEGER NOT NULL,
+        message TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (activity_id) REFERENCES activities(activity_id) ON DELETE CASCADE
+      );
     `);
     console.log('✅ SQLite Schema initialized according to Lab 3 specifications');
   },
@@ -144,6 +167,33 @@ export const db = {
         PRIMARY KEY (user_id, location_id),
         FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
         FOREIGN KEY (location_id) REFERENCES locations(location_id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+        await mysqlPool.query(`
+      CREATE TABLE IF NOT EXISTS activities (
+        activity_id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        title VARCHAR(150) NOT NULL,
+        activity_type VARCHAR(100) NOT NULL,
+        scheduled_at DATETIME NOT NULL,
+        indoor BOOLEAN NOT NULL DEFAULT FALSE,
+        latitude DECIMAL(9, 6) NOT NULL,
+        longitude DECIMAL(9, 6) NOT NULL,
+        city_name VARCHAR(100),
+        status VARCHAR(20) NOT NULL DEFAULT 'planned',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await mysqlPool.query(`
+      CREATE TABLE IF NOT EXISTS activity_alerts (
+        alert_id INT AUTO_INCREMENT PRIMARY KEY,
+        activity_id INT NOT NULL,
+        rain_probability INT NOT NULL,
+        message VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (activity_id) REFERENCES activities(activity_id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
     console.log('✅ MySQL Schema verified according to Lab 3 specifications');
