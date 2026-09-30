@@ -164,6 +164,15 @@ export default function WeatherTwin() {
   const [plan, setPlan] = useState([]);
   const [analyzed, setAnalyzed] = useState(false);
   const [copied, setCopied] = useState(false);
+    // =========================
+  // WHAT-IF WEATHER SIMULATOR
+  // =========================
+  const [whatIfOpen, setWhatIfOpen] = useState(false);
+  const [whatIfActivityIndex, setWhatIfActivityIndex] = useState(0);
+  const [whatIfRain, setWhatIfRain] = useState(0);
+  const [whatIfTemp, setWhatIfTemp] = useState(0);
+  const [whatIfWind, setWhatIfWind] = useState(0);
+  const [whatIfTimeShift, setWhatIfTimeShift] = useState(0);
 
   const simulation = useMemo(() => plan.map((entry) => {
     const weather = getWeatherForTime(currentWeather?.hourly, entry.time);
@@ -211,6 +220,135 @@ export default function WeatherTwin() {
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
     } catch { setCopied(false); }
+  };
+    // =========================
+  // WHAT-IF CALCULATIONS
+  // =========================
+  const selectedWhatIfActivity = simulation[whatIfActivityIndex];
+
+  const baseWeather = selectedWhatIfActivity?.weather;
+
+  const baseRain = baseWeather?.precipitation_prob ?? 20;
+  const baseTemp = baseWeather?.feels_like ?? baseWeather?.temperature ?? 28;
+  const baseWind = baseWeather?.wind_speed ?? 12;
+
+  const simulatedRain = Math.max(
+    0,
+    Math.min(100, baseRain + whatIfRain)
+  );
+
+  const simulatedTemp = baseTemp + whatIfTemp;
+
+  const simulatedWind = Math.max(
+    0,
+    baseWind + whatIfWind
+  );
+
+  const calculateWhatIfScore = () => {
+    let risk = 0;
+
+    risk += simulatedRain * 1.2;
+
+    if (simulatedTemp > 30) {
+      risk += (simulatedTemp - 30) * 6;
+    }
+
+    if (simulatedTemp > 35) {
+      risk += 20;
+    }
+
+    if (simulatedWind > 20) {
+      risk += (simulatedWind - 20) * 2;
+    }
+
+    if (simulatedRain >= 70) {
+      risk += 25;
+    }
+
+    return Math.max(
+      0,
+      Math.min(100, Math.round(100 - risk))
+    );
+  };
+
+  const currentWhatIfScore = baseWeather
+    ? Math.max(
+        0,
+        Math.min(
+          100,
+          Math.round(
+            100 -
+              baseRain * 1.2 -
+              Math.max(0, baseTemp - 30) * 6 -
+              Math.max(0, baseWind - 20) * 2
+          )
+        )
+      )
+    : 70;
+
+  const whatIfScore = calculateWhatIfScore();
+
+  const scoreDifference =
+    whatIfScore - currentWhatIfScore;
+
+  const getWhatIfStatus = () => {
+    if (whatIfScore >= 80) {
+      return {
+        icon: '🟢',
+        title: 'Excellent conditions',
+        className: 'good',
+      };
+    }
+
+    if (whatIfScore >= 60) {
+      return {
+        icon: '🟡',
+        title: 'Mostly suitable',
+        className: 'moderate',
+      };
+    }
+
+    if (whatIfScore >= 40) {
+      return {
+        icon: '🟠',
+        title: 'Use caution',
+        className: 'warning',
+      };
+    }
+
+    return {
+      icon: '🔴',
+      title: 'Poor conditions',
+      className: 'danger',
+    };
+  };
+
+  const whatIfStatus = getWhatIfStatus();
+
+  const applyWhatIfPreset = (preset) => {
+    if (preset === 'rain') {
+      setWhatIfRain(60);
+      setWhatIfTemp(0);
+      setWhatIfWind(5);
+    }
+
+    if (preset === 'heat') {
+      setWhatIfRain(0);
+      setWhatIfTemp(7);
+      setWhatIfWind(0);
+    }
+
+    if (preset === 'wind') {
+      setWhatIfRain(0);
+      setWhatIfTemp(0);
+      setWhatIfWind(20);
+    }
+
+    if (preset === 'better') {
+      setWhatIfRain(-15);
+      setWhatIfTemp(-2);
+      setWhatIfWind(-5);
+    }
   };
 
   if (!currentWeather?.hourly) return null;
@@ -328,6 +466,363 @@ export default function WeatherTwin() {
             </>
           )}
         </div>
+      </div>
+            {/* =========================================
+          WHAT-IF WEATHER SIMULATOR
+      ========================================= */}
+
+      <div className="what-if-simulator">
+
+        <div className="what-if-title-row">
+
+          <div>
+            <span className="what-if-kicker">
+              SCENARIO LAB
+            </span>
+
+            <h3>
+              🔮 What-If Weather Simulator
+            </h3>
+
+            <p>
+              Change weather conditions and see how your
+              activity would be affected.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="what-if-toggle"
+            onClick={() => setWhatIfOpen(!whatIfOpen)}
+          >
+            {whatIfOpen
+              ? 'Close Simulator'
+              : 'Try What-If'}
+          </button>
+
+        </div>
+
+
+        {whatIfOpen && (
+
+          <div className="what-if-body">
+
+            {/* Activity selector */}
+
+            <div className="what-if-field">
+
+              <label>
+                Select Activity
+              </label>
+
+              <select
+                value={whatIfActivityIndex}
+                onChange={(e) =>
+                  setWhatIfActivityIndex(
+                    Number(e.target.value)
+                  )
+                }
+              >
+
+                {simulation.length === 0 ? (
+                  <option value={0}>
+                    Plan an activity first
+                  </option>
+                ) : (
+                  simulation.map((item, index) => (
+                    <option
+                      key={`${item.time}-${index}`}
+                      value={index}
+                    >
+                      {formatTime12(item.time)} — {item.activity}
+                    </option>
+                  ))
+                )}
+
+              </select>
+
+            </div>
+
+
+            {/* Quick scenarios */}
+
+            <div className="what-if-section">
+
+              <div className="what-if-section-title">
+                Quick Scenarios
+              </div>
+
+              <div className="what-if-presets">
+
+                <button
+                  type="button"
+                  className="what-if-preset"
+                  onClick={() =>
+                    applyWhatIfPreset('rain')
+                  }
+                >
+                  🌧️ Heavy Rain
+                </button>
+
+                <button
+                  type="button"
+                  className="what-if-preset"
+                  onClick={() =>
+                    applyWhatIfPreset('heat')
+                  }
+                >
+                  🔥 Heatwave
+                </button>
+
+                <button
+                  type="button"
+                  className="what-if-preset"
+                  onClick={() =>
+                    applyWhatIfPreset('wind')
+                  }
+                >
+                  💨 Strong Wind
+                </button>
+
+                <button
+                  type="button"
+                  className="what-if-preset"
+                  onClick={() =>
+                    applyWhatIfPreset('better')
+                  }
+                >
+                  🌤️ Better Conditions
+                </button>
+
+              </div>
+
+            </div>
+
+
+            {/* Sliders */}
+
+            <div className="what-if-controls">
+
+              <div className="what-if-control">
+
+                <div className="what-if-control-head">
+                  <span>
+                    🌧️ Rain Probability
+                  </span>
+
+                  <strong>
+                    {whatIfRain > 0 ? '+' : ''}
+                    {whatIfRain}%
+                  </strong>
+                </div>
+
+                <input
+                  type="range"
+                  min="-30"
+                  max="80"
+                  value={whatIfRain}
+                  onChange={(e) =>
+                    setWhatIfRain(
+                      Number(e.target.value)
+                    )
+                  }
+                />
+
+              </div>
+
+
+              <div className="what-if-control">
+
+                <div className="what-if-control-head">
+                  <span>
+                    🌡️ Temperature
+                  </span>
+
+                  <strong>
+                    {whatIfTemp > 0 ? '+' : ''}
+                    {whatIfTemp}°C
+                  </strong>
+                </div>
+
+                <input
+                  type="range"
+                  min="-10"
+                  max="10"
+                  value={whatIfTemp}
+                  onChange={(e) =>
+                    setWhatIfTemp(
+                      Number(e.target.value)
+                    )
+                  }
+                />
+
+              </div>
+
+
+              <div className="what-if-control">
+
+                <div className="what-if-control-head">
+                  <span>
+                    💨 Wind Speed
+                  </span>
+
+                  <strong>
+                    {whatIfWind > 0 ? '+' : ''}
+                    {whatIfWind} km/h
+                  </strong>
+                </div>
+
+                <input
+                  type="range"
+                  min="-10"
+                  max="30"
+                  value={whatIfWind}
+                  onChange={(e) =>
+                    setWhatIfWind(
+                      Number(e.target.value)
+                    )
+                  }
+                />
+
+              </div>
+
+
+              <div className="what-if-control">
+
+                <div className="what-if-control-head">
+                  <span>
+                    🕐 Move Activity
+                  </span>
+
+                  <strong>
+                    {whatIfTimeShift > 0 ? '+' : ''}
+                    {whatIfTimeShift} hour
+                  </strong>
+                </div>
+
+                <input
+                  type="range"
+                  min="-2"
+                  max="3"
+                  step="1"
+                  value={whatIfTimeShift}
+                  onChange={(e) =>
+                    setWhatIfTimeShift(
+                      Number(e.target.value)
+                    )
+                  }
+                />
+
+              </div>
+
+            </div>
+
+
+            {/* Current vs What-If */}
+
+            <div className="what-if-comparison">
+
+              <div className="what-if-card current">
+
+                <span className="what-if-card-label">
+                  CURRENT PLAN
+                </span>
+
+                <div className="what-if-score">
+                  {currentWhatIfScore}
+                  <small>/100</small>
+                </div>
+
+                <div className="what-if-metrics">
+
+                  <span>
+                    🌧️ Rain: {baseRain}%
+                  </span>
+
+                  <span>
+                    🌡️ Temp: {Math.round(baseTemp)}°C
+                  </span>
+
+                  <span>
+                    💨 Wind: {Math.round(baseWind)} km/h
+                  </span>
+
+                </div>
+
+              </div>
+
+
+              <div className="what-if-arrow">
+                →
+              </div>
+
+
+              <div className="what-if-card scenario">
+
+                <span className="what-if-card-label">
+                  WHAT-IF SCENARIO
+                </span>
+
+                <div className="what-if-score">
+                  {whatIfScore}
+                  <small>/100</small>
+                </div>
+
+                <div className="what-if-metrics">
+
+                  <span>
+                    🌧️ Rain: {simulatedRain}%
+                  </span>
+
+                  <span>
+                    🌡️ Temp: {Math.round(simulatedTemp)}°C
+                  </span>
+
+                  <span>
+                    💨 Wind: {Math.round(simulatedWind)} km/h
+                  </span>
+
+                </div>
+
+              </div>
+
+            </div>
+
+
+            {/* Result */}
+
+            <div
+              className={`what-if-result ${whatIfStatus.className}`}
+            >
+
+              <div className="what-if-result-icon">
+                {whatIfStatus.icon}
+              </div>
+
+              <div>
+
+                <strong>
+
+                  {scoreDifference > 0
+                    ? `Scenario improves your score by ${scoreDifference} points`
+                    : scoreDifference < 0
+                    ? `Scenario reduces your score by ${Math.abs(scoreDifference)} points`
+                    : 'Scenario keeps the same score'}
+
+                </strong>
+
+                <p>
+                  {whatIfStatus.title}
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        )}
+
       </div>
     </section>
   );
